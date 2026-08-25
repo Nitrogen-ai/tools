@@ -34332,12 +34332,18 @@ dialog.modal .modal-actions {
     }
     return prev[n2];
   }
+  function foldUmlauts(str) {
+    return str.replace(/ä/g, "ae").replace(/ö/g, "oe").replace(/ü/g, "ue").replace(/ß/g, "ss").replace(/Ä/g, "Ae").replace(/Ö/g, "Oe").replace(/Ü/g, "Ue");
+  }
   function matchPersonName(name, people) {
     const trimmed = name.trim();
     let hit = people.find((p3) => p3.displayName === trimmed);
     if (hit) return { person: hit, method: "exact" };
     hit = people.find((p3) => p3.displayName.toLowerCase() === trimmed.toLowerCase());
     if (hit) return { person: hit, method: "case-insensitive" };
+    const foldedTrimmed = foldUmlauts(trimmed).toLowerCase();
+    hit = people.find((p3) => foldUmlauts(p3.displayName).toLowerCase() === foldedTrimmed);
+    if (hit) return { person: hit, method: "umlaut-folded" };
     let best = null;
     let bestDist = Infinity;
     for (const p3 of people) {
@@ -35501,7 +35507,7 @@ dialog.modal .modal-actions {
   };
   function splitPersonNames(cell) {
     if (!cell) return [];
-    return cell.split(",").map((s3) => s3.trim()).filter(Boolean);
+    return cell.split(/[,;]/).map((s3) => s3.trim()).filter(Boolean);
   }
   function importWishesCsv(rawText, people, opts = {}) {
     const columnMap = opts.columnMap || FORM_COLUMN_MAP;
