@@ -134,6 +134,10 @@ footer{text-align:center;padding:40px 24px;border-top:1px solid var(--line);font
     </div>
     <pre id="log"></pre>
     <div class="privacy-note">🔒 Eure PDFs verlassen den Browser nie — es gibt keinen Server, keinen Upload, keine Speicherung. Der erste Klick lädt einmalig eine Python-Umgebung nach (~30 MB, danach vom Browser zwischengespeichert).</div>
+    <div class="callout warn" style="margin-top:14px;margin-bottom:0">
+      <h4>📄 Einseitig vs. mehrseitig</h4>
+      <p style="margin:0"><b>Einseitige</b> Aufgabenblätter funktionieren direkt zuverlässig. Bei <b>mehrseitigen</b> Aufgabenblättern kann die Seitenreihenfolge beim Import in GoodNotes durcheinandergeraten (bekannte, bisher ungelöste Einschränkung, siehe „Grenzen" unten) — erzeugte Datei also immer erst öffnen, Reihenfolge prüfen und im Zweifel von Hand sortieren, bevor ihr sie im Unterricht einsetzt.</p>
+    </div>
   </div>
 </section>
 
@@ -209,7 +213,7 @@ python3 generate_goodnotes.py Arbeitsblatt.pdf Loesungsblatt.pdf \
   <h2>Grenzen, die ihr kennen solltet</h2>
   <ul>
     <li>Das ist eine <b>selbst zurückentwickelte Implementierung eines nicht dokumentierten Formats</b> — kein offizielles GoodNotes-Werkzeug. Jede frisch erzeugte Datei einmal testweise öffnen, bevor sie im Unterricht zum Einsatz kommt.</li>
-    <li><b>Seitenreihenfolge:</b> bei mehrseitigen Dokumenten kann die Reihenfolge beim Import gelegentlich durcheinandergeraten (Ursache trotz ausführlicher Fehlersuche nicht abschließend gefunden) — im Zweifel nach dem Import einmal von Hand sortieren.</li>
+    <li><b>Seitenreihenfolge:</b> <b>einseitige</b> Aufgabenblätter sind unkritisch und funktionieren direkt. Bei <b>mehrseitigen</b> Dokumenten gerät die Reihenfolge beim Import in GoodNotes häufig durcheinander (Ursache trotz ausführlicher Fehlersuche nicht abschließend gefunden) — hier nach jedem Erzeugen die Datei öffnen, Reihenfolge prüfen und meistens von Hand nachsortieren, bevor sie im Unterricht zum Einsatz kommt.</li>
     <li><b>Erkennungsqualität hängt vom Material ab:</b> bei Arbeitsblättern mit vielen eingebetteten Vektorgrafiken (z. B. Strukturformeln) kann es hilfreich sein, vorab zu prüfen, dass Aufgaben- und Lösungsblatt bis auf die Antworten wirklich <i>positionsgleich</i> sind (siehe <code class="inline">render_preview.py</code> im Paket für eine Vorschau, bevor ihr euch auf das Ergebnis verlasst).</li>
   </ul>
 </section>
