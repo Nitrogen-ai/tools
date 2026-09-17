@@ -74,6 +74,18 @@ code.inline{background:var(--surface);border:1px solid var(--line);border-radius
 
 footer{text-align:center;padding:40px 24px;border-top:1px solid var(--line);font-family:'Outfit',sans-serif;font-size:.8rem;color:var(--ink3)}
 
+.tool-card{background:var(--card);border:1.5px solid var(--line);border-radius:var(--radius);padding:26px 26px 24px;box-shadow:var(--shadow)}
+.tool-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:16px 0}
+@media (max-width:560px){.tool-row{grid-template-columns:1fr}}
+.field label{display:block;font-family:'Outfit',sans-serif;font-weight:600;font-size:.82rem;color:var(--ink2);margin-bottom:6px}
+.field input[type=file],.field input[type=text]{width:100%;font-family:'Source Serif 4',Georgia,serif;font-size:.9rem;padding:9px 10px;border:1.5px solid var(--line);border-radius:9px;background:var(--surface);color:var(--ink)}
+.field input[type=text]{font-family:'Outfit',sans-serif}
+.tool-actions{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:18px}
+#log{display:none;margin-top:16px;max-height:220px;overflow-y:auto;font-size:.78rem}
+#downloadLink{display:none}
+.btn:disabled{opacity:.55;cursor:default;box-shadow:none}
+.privacy-note{display:flex;align-items:flex-start;gap:8px;font-size:.85rem;color:var(--ink3);margin-top:14px}
+
 @media (max-width:560px){.wrap{padding:0 18px}.hero{padding:36px 0 24px}}
 </style>
 </head>
@@ -93,8 +105,35 @@ footer{text-align:center;padding:40px 24px;border-top:1px solid var(--line);font
   <h1>Musterlösungen live vergleichen — mit einem Wisch</h1>
   <p class="lead">Aus eurem <b>Aufgabenblatt</b> und <b>Lösungsblatt</b> (zwei PDFs) entsteht automatisch eine fertige <b>.goodnotes</b>-Datei: das Lösungsblatt als Hintergrund, jede erkannte Antwort mit einem deckenden weißen Strich überklebt. Im Unterricht projiziert, radiert ihr die Striche einfach live weg, um Schritt für Schritt zu vergleichen — kein Hin- und Herwechseln zwischen zwei Dateien, keine vorab aufgedeckten Lösungen.</p>
   <div class="cta-row">
-    <a class="btn btn-primary" href="goodnotes-praesentation-generator.zip" download>⬇ Werkzeug herunterladen (.zip)</a>
-    <a class="btn btn-secondary" href="#wie">Wie funktioniert das?</a>
+    <a class="btn btn-primary" href="#tool">🖍️ Jetzt online nutzen</a>
+    <a class="btn btn-secondary" href="goodnotes-praesentation-generator.zip" download>⬇ Python-Tool herunterladen (.zip)</a>
+  </div>
+</section>
+
+<section class="block" id="tool" style="border-top:none;padding-top:0">
+  <div class="tool-card">
+    <h2 style="margin-bottom:6px">Aufgabenblatt + Lösungsblatt hochladen</h2>
+    <p style="margin-bottom:0">Läuft komplett hier im Browser (Diff-Modus). Für Farb-Modus, Grid-Modus oder Stapelverarbeitung: das <a href="#wie">Python-Tool</a> weiter unten.</p>
+    <div class="tool-row">
+      <div class="field">
+        <label for="blankPdf">Aufgabenblatt (leer)</label>
+        <input type="file" id="blankPdf" accept="application/pdf">
+      </div>
+      <div class="field">
+        <label for="solutionPdf">Lösungsblatt</label>
+        <input type="file" id="solutionPdf" accept="application/pdf">
+      </div>
+    </div>
+    <div class="field" style="max-width:320px">
+      <label for="titleInput">Titel der Präsentation</label>
+      <input type="text" id="titleInput" value="Präsentation">
+    </div>
+    <div class="tool-actions">
+      <button id="generateBtn" class="btn btn-primary">🖍️ .goodnotes erzeugen</button>
+      <a id="downloadLink" class="btn btn-primary">⬇ Datei herunterladen</a>
+    </div>
+    <pre id="log"></pre>
+    <div class="privacy-note">🔒 Eure PDFs verlassen den Browser nie — es gibt keinen Server, keinen Upload, keine Speicherung. Der erste Klick lädt einmalig eine Python-Umgebung nach (~30 MB, danach vom Browser zwischengespeichert).</div>
   </div>
 </section>
 
@@ -111,9 +150,9 @@ footer{text-align:center;padding:40px 24px;border-top:1px solid var(--line);font
 </section>
 
 <section class="block" id="wie">
-  <div class="kicker">So nutzt ihr es</div>
-  <h2>Mit KI-Unterstützung — auch ohne eigene Python-Erfahrung</h2>
-  <p>Das Werkzeug ist ein kleines Python-Programm, kein Klick-und-fertig-Browser-Tool. Ihr müsst dafür aber selbst keine Zeile Code verstehen — ein KI-Chat mit Code-Ausführung erledigt das für euch:</p>
+  <div class="kicker">Fortgeschritten</div>
+  <h2>Farb-Modus, Grid-Modus oder lokal — mit KI-Unterstützung</h2>
+  <p>Für den normalen Fall (leeres Arbeitsblatt + Lösungsblatt) reicht das <a href="#tool">Werkzeug oben im Browser</a> — kein Download, kein Python nötig. Für den <b>Farb-Modus</b> (Antworten stecken farbig in einer einzigen PDF), den <b>Grid-Modus</b> (Sitzpläne/Stundenpläne) oder Stapelverarbeitung vieler Dateien auf einmal braucht ihr das Python-Programm selbst. Auch dafür müsst ihr keine Zeile Code verstehen — ein KI-Chat mit Code-Ausführung erledigt das für euch:</p>
   <ol class="steps">
     <li><b>Werkzeug herunterladen</b> und entpacken (Button oben). Ihr braucht die ganze <code class="inline">goodnotes-praesentation-generator/</code>-Ordnerstruktur (Skripte + <code class="inline">templates/</code>-Ordner).</li>
     <li><b>KI-Chat mit Code-Ausführung öffnen</b> (siehe unten, welche kostenlos reicht) und alle Dateien aus dem entpackten Ordner sowie eure beiden PDFs (Aufgabenblatt + Lösungsblatt) hochladen.</li>
@@ -131,7 +170,7 @@ python3 generate_goodnotes.py Arbeitsblatt.pdf Loesungsblatt.pdf \
 <section class="block" id="kostenlos">
   <div class="kicker">Kosten &amp; Technik</div>
   <h2>Reicht die Gratis-Version von ChatGPT oder Gemini?</h2>
-  <p><b>Kurz: Das Skript selbst ist überhaupt nicht rechenlastig.</b> Es vergleicht zwei kleine PDFs und schreibt eine Zip-ähnliche Datei von wenigen hundert Kilobyte — das läuft auf jedem Laptop in Sekundenbruchteilen, ganz ohne GPU. Die eigentliche Frage ist nicht „reicht die Rechenleistung", sondern: <b>Darf der jeweilige KI-Chat überhaupt Code ausführen, und darf er dabei die eine benötigte Zusatzbibliothek (<code class="inline">pymupdf</code>) nachinstallieren?</b> Das unterscheidet sich je nach Anbieter (Stand: September 2026):</p>
+  <p>Betrifft nur den <a href="#wie">fortgeschrittenen Weg</a> (Farb-/Grid-Modus per KI-Chat) — das Werkzeug oben im Browser braucht gar keine KI. <b>Kurz: Das Skript selbst ist überhaupt nicht rechenlastig.</b> Es vergleicht zwei kleine PDFs und schreibt eine Zip-ähnliche Datei von wenigen hundert Kilobyte — das läuft auf jedem Laptop in Sekundenbruchteilen, ganz ohne GPU. Die eigentliche Frage ist nicht „reicht die Rechenleistung", sondern: <b>Darf der jeweilige KI-Chat überhaupt Code ausführen, und darf er dabei die eine benötigte Zusatzbibliothek (<code class="inline">pymupdf</code>) nachinstallieren?</b> Das unterscheidet sich je nach Anbieter (Stand: September 2026):</p>
 
   <table>
     <tr><th>Anbieter</th><th>Code-Ausführung im Gratis-Tarif?</th><th>Eigene Pakete (<code class="inline">pip install</code>)?</th><th>Fazit für dieses Werkzeug</th></tr>
@@ -181,6 +220,101 @@ python3 generate_goodnotes.py Arbeitsblatt.pdf Loesungsblatt.pdf \
   <div>✦ ClassroomSpark · von einer Lehrperson für Lehrpersonen</div>
   <div style="margin-top:6px"><a href="https://nitrogen-ai.github.io/ClassroomSpark/#cat-tools">← Zurück zu General Tools</a></div>
 </footer>
+
+
+<script type="module">
+const PYTOOL_FILES = [
+  "color_answers.py","diff_pdfs.py","events_builder.py","generate_goodnotes.py",
+  "pbdump.py","pbwrite.py","strokes.py"
+];
+const TEMPLATE_FILES = [
+  "templates/index.events.pb",
+  "templates/notes/319A0E34-AD58-5F63-9E40-DF28F9B60AE4",
+  "templates/notes/25E8EBC7-2742-53D5-A382-63DE44D29E86"
+];
+const PYMUPDF_WHEEL = "goodnotes-assets/pymupdf-1.28.2-cp313-abi3-pyemscripten_2025_0_wasm32.whl";
+const PYTOOL_DIR = "/goodnotes-tools";
+
+const logEl = document.getElementById('log');
+const genBtn = document.getElementById('generateBtn');
+const dlLink = document.getElementById('downloadLink');
+function log(msg) {
+  logEl.style.display = 'block';
+  logEl.textContent += msg + "\n";
+  logEl.scrollTop = logEl.scrollHeight;
+}
+
+let pyodideReady = null;
+async function getPyodide() {
+  if (pyodideReady) return pyodideReady;
+  pyodideReady = (async () => {
+    log("Lade Python-Umgebung (einmalig, ~30 MB)…");
+    const { loadPyodide } = await import("./goodnotes-assets/pyodide/pyodide.mjs");
+    const pyodide = await loadPyodide({ indexURL: "./goodnotes-assets/pyodide/" });
+    pyodide.setStdout({ batched: (s) => log(s) });
+    pyodide.setStderr({ batched: (s) => log(s) });
+
+    log("Lade PDF-Bibliothek (pymupdf)…");
+    await pyodide.loadPackage(PYMUPDF_WHEEL);
+
+    log("Lade Werkzeug-Code…");
+    pyodide.FS.mkdirTree(PYTOOL_DIR);
+    pyodide.FS.mkdirTree(`${PYTOOL_DIR}/templates/notes`);
+    for (const f of PYTOOL_FILES) {
+      const buf = await (await fetch(`goodnotes-assets/pytool/${f}`)).arrayBuffer();
+      pyodide.FS.writeFile(`${PYTOOL_DIR}/${f}`, new Uint8Array(buf));
+    }
+    for (const f of TEMPLATE_FILES) {
+      const buf = await (await fetch(`goodnotes-assets/pytool/${f}`)).arrayBuffer();
+      pyodide.FS.writeFile(`${PYTOOL_DIR}/${f}`, new Uint8Array(buf));
+    }
+    await pyodide.runPythonAsync(`
+import sys
+sys.path.insert(0, "${PYTOOL_DIR}")
+import generate_goodnotes as gg
+`);
+    return pyodide;
+  })();
+  return pyodideReady;
+}
+
+genBtn.addEventListener('click', async () => {
+  const blankFile = document.getElementById('blankPdf').files[0];
+  const solutionFile = document.getElementById('solutionPdf').files[0];
+  const title = document.getElementById('titleInput').value.trim() || "Präsentation";
+  if (!blankFile || !solutionFile) {
+    log("Bitte beide PDFs auswählen (Aufgabenblatt und Lösungsblatt).");
+    return;
+  }
+  genBtn.disabled = true;
+  dlLink.style.display = 'none';
+  logEl.textContent = '';
+  try {
+    const pyodide = await getPyodide();
+    pyodide.FS.mkdirTree('/uploads');
+    pyodide.FS.writeFile('/uploads/blank.pdf', new Uint8Array(await blankFile.arrayBuffer()));
+    pyodide.FS.writeFile('/uploads/solution.pdf', new Uint8Array(await solutionFile.arrayBuffer()));
+
+    log("Vergleiche PDFs und baue .goodnotes-Datei…");
+    pyodide.globals.set('py_title', title);
+    await pyodide.runPythonAsync(`
+gg.build_document("/uploads/blank.pdf", "/uploads/solution.pdf", py_title, "/uploads/out.goodnotes")
+`);
+    const outBytes = pyodide.FS.readFile('/uploads/out.goodnotes');
+    const blob = new Blob([outBytes], { type: 'application/octet-stream' });
+    const filename = `${title}.goodnotes`;
+    dlLink.href = URL.createObjectURL(blob);
+    dlLink.download = filename;
+    dlLink.textContent = `⬇ ${filename} herunterladen`;
+    dlLink.style.display = 'inline-flex';
+    log(`Fertig — ${filename} (${outBytes.length} Bytes). Vor dem Einsatz im Unterricht einmal testweise in GoodNotes öffnen.`);
+  } catch (e) {
+    log("Fehler: " + (e && e.message ? e.message : e));
+  } finally {
+    genBtn.disabled = false;
+  }
+});
+</script>
 
 </body>
 </html>
