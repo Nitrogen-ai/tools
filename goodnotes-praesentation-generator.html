@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GoodNotes-Präsentationsgenerator — ClassroomSpark</title>
+<meta name="description" content="Musterlösungen im Unterricht live vergleichen: aus Aufgabenblatt + Lösungsblatt automatisch eine .goodnotes-Datei mit wegradierbaren Antwort-Abdeckungen erzeugen.">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Source+Serif+4:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#FFFDF7;--surface:#FFF9EE;--card:#FFFFFF;
+  --ink:#1A1A2E;--ink2:#3D3D5C;--ink3:#7A7A9C;
+  --violet:#8B5CF6;--violet2:#7C3AED;--violetGlow:#EDE9FE;
+  --mint:#10B981;--amber:#F59E0B;--coral:#EF4444;
+  --line:rgba(26,26,46,.09);
+  --radius:16px;--shadow:0 4px 24px rgba(26,26,46,.06);
+}
+html{scroll-behavior:smooth}
+body{font-family:'Source Serif 4',Georgia,serif;background:var(--bg);color:var(--ink);line-height:1.7}
+h1,h2,h3,h4{font-family:'Outfit',sans-serif;line-height:1.2;color:var(--ink)}
+a{color:var(--violet2)}
+code,pre{font-family:'JetBrains Mono',ui-monospace,monospace}
+.wrap{max-width:800px;margin:0 auto;padding:0 24px}
+
+header.top{background:var(--card);border-bottom:1px solid var(--line);padding:16px 0}
+.top-inner{max-width:800px;margin:0 auto;padding:0 24px;display:flex;align-items:center;justify-content:space-between}
+.back{font-family:'Outfit',sans-serif;font-weight:600;font-size:.85rem;color:var(--ink2);text-decoration:none;display:inline-flex;align-items:center;gap:6px}
+.back:hover{color:var(--violet2)}
+.brand{font-family:'Outfit',sans-serif;font-weight:800;color:var(--ink);font-size:.95rem}
+
+.hero{padding:52px 0 36px}
+.eyebrow{display:inline-flex;align-items:center;gap:8px;background:var(--violetGlow);color:var(--violet2);font-family:'Outfit',sans-serif;font-weight:700;font-size:.75rem;letter-spacing:1px;text-transform:uppercase;padding:6px 16px;border-radius:30px;margin-bottom:20px}
+h1{font-size:clamp(1.9rem,5vw,2.6rem);font-weight:800;margin-bottom:14px;max-width:18ch}
+.lead{font-size:1.12rem;color:var(--ink2);max-width:60ch}
+.lead b{color:var(--ink)}
+
+.cta-row{display:flex;flex-wrap:wrap;gap:12px;margin-top:28px}
+.btn{display:inline-flex;align-items:center;gap:8px;padding:13px 26px;border-radius:12px;font-family:'Outfit',sans-serif;font-weight:600;font-size:.95rem;text-decoration:none;border:none;cursor:pointer}
+.btn-primary{background:linear-gradient(135deg,var(--violet),var(--violet2));color:#fff;box-shadow:0 4px 18px rgba(139,92,246,.35)}
+.btn-secondary{background:var(--surface);color:var(--ink2);border:1.5px solid var(--line)}
+
+section.block{padding:34px 0;border-top:1px solid var(--line)}
+.kicker{font-family:'Outfit',sans-serif;font-size:.72rem;font-weight:700;letter-spacing:1.6px;text-transform:uppercase;color:var(--violet2);margin-bottom:10px}
+h2{font-size:1.5rem;margin-bottom:14px}
+h3{font-size:1.12rem;margin:20px 0 8px}
+p{margin-bottom:12px;color:var(--ink2)}
+p b, li b{color:var(--ink)}
+ul,ol{padding-left:1.3em;color:var(--ink2);margin-bottom:12px}
+li{margin-bottom:6px}
+
+.callout{background:var(--card);border:1.5px solid var(--line);border-radius:var(--radius);padding:20px 22px;box-shadow:var(--shadow);margin:16px 0}
+.callout.good{border-color:rgba(16,185,129,.35);background:linear-gradient(180deg,rgba(16,185,129,.06),var(--card))}
+.callout.warn{border-color:rgba(245,158,11,.4);background:linear-gradient(180deg,rgba(245,158,11,.08),var(--card))}
+.callout h4{font-family:'Outfit',sans-serif;font-size:.95rem;margin-bottom:6px;display:flex;align-items:center;gap:8px}
+
+.steps{counter-reset:step;list-style:none;padding:0;display:grid;gap:14px}
+.steps li{counter-increment:step;position:relative;padding-left:44px;color:var(--ink2)}
+.steps li::before{content:counter(step);position:absolute;left:0;top:-1px;width:30px;height:30px;border-radius:9px;background:var(--violet);color:#fff;font-family:'Outfit',sans-serif;font-weight:700;font-size:.9rem;display:grid;place-items:center}
+.steps li b{color:var(--ink)}
+
+table{width:100%;border-collapse:collapse;margin:14px 0;font-size:.92rem}
+th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-family:'Outfit',sans-serif;font-size:.78rem;text-transform:uppercase;letter-spacing:.6px;color:var(--ink3)}
+td.yes{color:var(--mint);font-weight:700}
+td.no{color:var(--coral);font-weight:700}
+
+pre{background:#211a30;color:#e9e4f5;border-radius:12px;padding:16px 18px;overflow-x:auto;font-size:.84rem;line-height:1.55;margin:12px 0}
+pre .cm{color:#a78bfa}
+code.inline{background:var(--surface);border:1px solid var(--line);border-radius:5px;padding:1px 6px;font-size:.88em}
+
+.src-list{font-size:.85rem;color:var(--ink3)}
+.src-list a{color:var(--ink3);text-decoration:underline}
+
+footer{text-align:center;padding:40px 24px;border-top:1px solid var(--line);font-family:'Outfit',sans-serif;font-size:.8rem;color:var(--ink3)}
+
+@media (max-width:560px){.wrap{padding:0 18px}.hero{padding:36px 0 24px}}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="top-inner">
+    <span class="brand">✦ ClassroomSpark</span>
+    <a class="back" href="https://nitrogen-ai.github.io/ClassroomSpark/#cat-tools">← Zurück zu General Tools</a>
+  </div>
+</header>
+
+<div class="wrap">
+
+<section class="hero">
+  <span class="eyebrow">🖍️ Für GoodNotes-Nutzer:innen</span>
+  <h1>Musterlösungen live vergleichen — mit einem Wisch</h1>
+  <p class="lead">Aus eurem <b>Aufgabenblatt</b> und <b>Lösungsblatt</b> (zwei PDFs) entsteht automatisch eine fertige <b>.goodnotes</b>-Datei: das Lösungsblatt als Hintergrund, jede erkannte Antwort mit einem deckenden weißen Strich überklebt. Im Unterricht projiziert, radiert ihr die Striche einfach live weg, um Schritt für Schritt zu vergleichen — kein Hin- und Herwechseln zwischen zwei Dateien, keine vorab aufgedeckten Lösungen.</p>
+  <div class="cta-row">
+    <a class="btn btn-primary" href="goodnotes-praesentation-generator.zip" download>⬇ Werkzeug herunterladen (.zip)</a>
+    <a class="btn btn-secondary" href="#wie">Wie funktioniert das?</a>
+  </div>
+</section>
+
+<section class="block" id="was">
+  <div class="kicker">Was das ist</div>
+  <h2>Ein wegradierbarer „Lösungsschlüssel" direkt in GoodNotes</h2>
+  <p>Viele Aufgabenblätter existieren doppelt: einmal leer für die Klasse, einmal mit Lösung für die Lehrperson. Dieses Werkzeug vergleicht beide PDFs automatisch, findet jede Stelle, an der die Lösung zusätzlichen Text oder eine zusätzliche Zeichnung enthält, und malt dort einen echten, aus einer realen GoodNotes-Datei geklonten weißen Deckstrich hinein.</p>
+  <p>Das Ergebnis ist eine ganz normale <code class="inline">.goodnotes</code>-Datei: öffnen, projizieren, und die Antworten mit dem Finger/Stift freilegen, sobald die Klasse eine Lösung vorgeschlagen hat. Funktioniert für getippten Text <i>und</i> für gezeichnete Antworten (z. B. Spektren, Orbital-Skizzen, Strukturformeln) gleichermaßen.</p>
+  <p>Zwei Erkennungsmodi, je nachdem, wie euer Material aufgebaut ist:</p>
+  <ul>
+    <li><b>Diff-Modus</b> (Standard): ihr habt ein leeres und ein gelöstes PDF nebeneinander — alles, was im Lösungs-PDF zusätzlich steht, wird abgedeckt.</li>
+    <li><b>Farb-Modus</b>: eure Lösungen stecken schon in <i>einer</i> Datei, nur in einer anderen Textfarbe (z. B. ein Verlagsschlüssel in Pink/Magenta) — kein zweites PDF nötig.</li>
+  </ul>
+</section>
+
+<section class="block" id="wie">
+  <div class="kicker">So nutzt ihr es</div>
+  <h2>Mit KI-Unterstützung — auch ohne eigene Python-Erfahrung</h2>
+  <p>Das Werkzeug ist ein kleines Python-Programm, kein Klick-und-fertig-Browser-Tool. Ihr müsst dafür aber selbst keine Zeile Code verstehen — ein KI-Chat mit Code-Ausführung erledigt das für euch:</p>
+  <ol class="steps">
+    <li><b>Werkzeug herunterladen</b> und entpacken (Button oben). Ihr braucht die ganze <code class="inline">goodnotes-praesentation-generator/</code>-Ordnerstruktur (Skripte + <code class="inline">templates/</code>-Ordner).</li>
+    <li><b>KI-Chat mit Code-Ausführung öffnen</b> (siehe unten, welche kostenlos reicht) und alle Dateien aus dem entpackten Ordner sowie eure beiden PDFs (Aufgabenblatt + Lösungsblatt) hochladen.</li>
+    <li><b>Bitten, das Skript auszuführen</b> — z. B.: „Führe <code class="inline">generate_goodnotes.py</code> mit meinem Aufgabenblatt als erstem und dem Lösungsblatt als zweitem Argument aus und gib mir die erzeugte <code class="inline">.goodnotes</code>-Datei zum Download." Falls <code class="inline">pymupdf</code> fehlt, reicht die Bitte „installiere zuerst <code class="inline">pymupdf</code> per pip".</li>
+    <li><b>Datei herunterladen</b> und einmal testweise in GoodNotes öffnen, bevor ihr euch im Unterricht darauf verlasst (siehe Hinweis zu Grenzen unten) — bei mehrseitigen Dateien kann die Seitenreihenfolge gelegentlich durcheinandergeraten; im Zweifel einmal von Hand sortieren.</li>
+  </ol>
+
+  <h3>Oder lokal, ganz ohne KI</h3>
+  <pre>pip3 install pymupdf
+<span class="cm"># Diff-Modus: leeres Arbeitsblatt + Lösungsblatt</span>
+python3 generate_goodnotes.py Arbeitsblatt.pdf Loesungsblatt.pdf \
+  "Praesentation-Arbeitsblatt" Praesentation-Arbeitsblatt.goodnotes</pre>
+</section>
+
+<section class="block" id="kostenlos">
+  <div class="kicker">Kosten &amp; Technik</div>
+  <h2>Reicht die Gratis-Version von ChatGPT oder Gemini?</h2>
+  <p><b>Kurz: Das Skript selbst ist überhaupt nicht rechenlastig.</b> Es vergleicht zwei kleine PDFs und schreibt eine Zip-ähnliche Datei von wenigen hundert Kilobyte — das läuft auf jedem Laptop in Sekundenbruchteilen, ganz ohne GPU. Die eigentliche Frage ist nicht „reicht die Rechenleistung", sondern: <b>Darf der jeweilige KI-Chat überhaupt Code ausführen, und darf er dabei die eine benötigte Zusatzbibliothek (<code class="inline">pymupdf</code>) nachinstallieren?</b> Das unterscheidet sich je nach Anbieter (Stand: September 2026):</p>
+
+  <table>
+    <tr><th>Anbieter</th><th>Code-Ausführung im Gratis-Tarif?</th><th>Eigene Pakete (<code class="inline">pip install</code>)?</th><th>Fazit für dieses Werkzeug</th></tr>
+    <tr><td><b>ChatGPT</b> (Gratis-Konto)</td><td class="yes">Ja, mit Nutzungslimit</td><td class="yes">Ja — läuft über einen internen Paket-Proxy, auch ohne direkten Internetzugriff des Containers</td><td class="yes">Funktioniert direkt im Gratis-Chat</td></tr>
+    <tr><td><b>Gemini</b> (App / eingebautes <code class="inline">code_execution</code>-Tool, auch via Google AI Studio)</td><td class="yes">Ja, mit Nutzungslimit</td><td class="no">Nein — nur eine feste, vorinstallierte Auswahl (u. a. NumPy, Pandas, Matplotlib), keine eigenen Zusatzpakete</td><td class="no">Läuft <i>nicht</i> direkt, da <code class="inline">pymupdf</code> fehlt</td></tr>
+  </table>
+
+  <div class="callout good">
+    <h4>💡 Praxis-Tipp für Gemini-Nutzer:innen</h4>
+    <p style="margin:0">Lasst euch den Ablauf von Gemini erklären, führt das eigentliche Skript dann aber entweder (a) in einem <b>kostenlosen Google-Colab-Notebook</b> aus (dort funktioniert <code class="inline">pip install pymupdf</code> uneingeschränkt, ganz unabhängig von einem Gemini-Abo), oder (b) kurz in einem <b>Gratis-ChatGPT-Chat</b>, oder (c) einmalig lokal mit eigenem Python (drei Zeilen, siehe oben) — ein bezahltes „Pro"-Abo ist für keinen dieser drei Wege nötig.</p>
+  </div>
+
+  <p class="src-list">Quellen (Stand der Recherche: September 2026): <a href="https://simonwillison.net/2026/Jan/26/chatgpt-containers/" target="_blank" rel="noopener">Simon Willison zu ChatGPT Containers</a> · <a href="https://ai.google.dev/gemini-api/docs/code-execution" target="_blank" rel="noopener">Gemini-API-Dokumentation „Code execution"</a>. KI-Produkte ändern sich schnell — im Zweifel selbst kurz ausprobieren.</p>
+</section>
+
+<section class="block" id="legal">
+  <div class="kicker">Rechtliches</div>
+  <h2>Ist das erlaubt?</h2>
+  <p>Kurze Einordnung, keine Rechtsberatung:</p>
+
+  <div class="callout good">
+    <h4>✅ Urheberrechtlich unproblematisch</h4>
+    <p style="margin:0">Das Werkzeug enthält keine Zeile GoodNotes-eigenen Codes und keine urheberrechtlich geschützten GoodNotes-Inhalte. Es wurde ausschließlich dadurch entwickelt, dass die <i>Struktur</i> selbst erstellter, eigener <code class="inline">.goodnotes</code>-Dateien beobachtet wurde — reine Dateiformat-Kompatibilität. Nach ständiger EU-Rechtsprechung (EuGH, <i>SAS Institute ./. World Programming Ltd</i>, C-406/10) sind weder die Funktionalität eines Programms noch ein von ihm verwendetes Dateiformat als solches urheberrechtlich geschützt — geschützt ist nur der konkrete Quellcode, und der wurde hier nirgends kopiert oder zurückübersetzt.</p>
+  </div>
+
+  <div class="callout warn">
+    <h4>⚠️ Aber: GoodNotes' eigene Nutzungsbedingungen</h4>
+    <p style="margin:0">Die GoodNotes-AGB untersagen ausdrücklich, „die Struktur, Ideen oder Algorithmen" der GoodNotes-Dienste zu entschlüsseln oder zurückzuentwickeln. Das ist ein <b>vertraglicher</b> Punkt (Verstoß gegen die AGB), kein urheberrechtlicher — in der EU/Deutschland wären entsprechende Vertragsklauseln zumindest insoweit unwirksam, wie sie das gesetzlich ausdrücklich erlaubte Zurückentwickeln zur Herstellung von <i>Interoperabilität</i> beschränken (Art. 6 i. V. m. Art. 8 Abs. 2 der EU-Software-Richtlinie 2009/24/EG, umgesetzt in § 69e UrhG) — ob eine reine Dateiformat-Analyse (statt einer Programm-Dekompilierung) exakt darunterfällt, ist juristisch nicht abschließend geklärt. Praktisch bedeutet ein Verstoß gegen die AGB im schlimmsten Fall eine Kontosperrung durch GoodNotes, keine Urheberrechtsklage.</p>
+  </div>
+
+  <p><b>Empfehlung:</b> Nutzt das Werkzeug wie hier vorgesehen — für eure eigenen, selbst erstellten Unterrichtsmaterialien, zum privaten/dienstlichen Gebrauch in der eigenen Klasse, nicht zum Nachbau oder Verkauf eines konkurrierenden Produkts. Gebt bei Weitergabe diese Seite mit, damit alle dieselbe Einordnung kennen. Diese Einschätzung ersetzt keine anwaltliche Beratung.</p>
+</section>
+
+<section class="block" id="grenzen">
+  <div class="kicker">Ehrlich gesagt</div>
+  <h2>Grenzen, die ihr kennen solltet</h2>
+  <ul>
+    <li>Das ist eine <b>selbst zurückentwickelte Implementierung eines nicht dokumentierten Formats</b> — kein offizielles GoodNotes-Werkzeug. Jede frisch erzeugte Datei einmal testweise öffnen, bevor sie im Unterricht zum Einsatz kommt.</li>
+    <li><b>Seitenreihenfolge:</b> bei mehrseitigen Dokumenten kann die Reihenfolge beim Import gelegentlich durcheinandergeraten (Ursache trotz ausführlicher Fehlersuche nicht abschließend gefunden) — im Zweifel nach dem Import einmal von Hand sortieren.</li>
+    <li><b>Erkennungsqualität hängt vom Material ab:</b> bei Arbeitsblättern mit vielen eingebetteten Vektorgrafiken (z. B. Strukturformeln) kann es hilfreich sein, vorab zu prüfen, dass Aufgaben- und Lösungsblatt bis auf die Antworten wirklich <i>positionsgleich</i> sind (siehe <code class="inline">render_preview.py</code> im Paket für eine Vorschau, bevor ihr euch auf das Ergebnis verlasst).</li>
+  </ul>
+</section>
+
+</div>
+
+<footer>
+  <div>✦ ClassroomSpark · von einer Lehrperson für Lehrpersonen</div>
+  <div style="margin-top:6px"><a href="https://nitrogen-ai.github.io/ClassroomSpark/#cat-tools">← Zurück zu General Tools</a></div>
+</footer>
+
+</body>
+</html>

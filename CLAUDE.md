@@ -7,6 +7,16 @@
 - ClassroomSpark (Landingpage für Lehrkräfte) verlinkt hierher, genau wie auf
   `training` — Kategorie "General Tools" / "Allgemeine Werkzeuge".
 
+## Ausnahme: goodnotes-praesentation-generator
+- Kein Browser-Werkzeug, sondern ein Python-Kommandozeilenprogramm (Quelle:
+  `Allgemeine Materialien/_goodnotes-tools/` außerhalb dieses Repos, siehe
+  dessen CLAUDE.md für die volle technische Doku zum .goodnotes-Format).
+  `goodnotes-praesentation-generator.html` ist die Erklärseite (einzelne
+  offline HTML-Datei, hält die sonstige Konvention ein),
+  `goodnotes-praesentation-generator.zip` das gepackte Python-Tool zum
+  Download. Bei Änderungen am Quelltool: Zip in `_goodnotes-tools/`
+  neu bauen (Skripte + `templates/`, ohne `__pycache__`) und hier ersetzen.
+
 ## Konventionen
 - Jedes Werkzeug ist eine einzelne, offline lauffähige HTML-Datei — keine
   CDN-Abhängigkeiten, kein Server, keine Laufzeit-Netzwerkzugriffe.
