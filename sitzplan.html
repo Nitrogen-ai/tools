@@ -149,6 +149,25 @@ button:disabled {
   stroke: var(--ink);
   stroke-width: 1.5;
 }
+.room-svg .desk {
+  cursor: grab;
+}
+.room-svg .desk rect {
+  pointer-events: all;
+}
+.room-svg .desk text {
+  pointer-events: none;
+}
+.room-svg .desk-ghost {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 2;
+  stroke-dasharray: 4 3;
+  pointer-events: none;
+}
+.room-svg .desk-ghost.invalid {
+  stroke: var(--warn);
+}
 .room-svg .desk text {
   fill: var(--ink);
   font-size: 11px;
@@ -34113,6 +34132,15 @@ dialog.modal .modal-actions {
     return [...others, ...layoutRowSeats(row, allSeats)];
   }
   var DESK_WIDTH_UNITS = 3;
+  function isFreeDesk(room) {
+    return room.deskPosition === "free" && Number.isFinite(room.deskX) && Number.isFinite(room.deskY);
+  }
+  function deskCells(room) {
+    if (!isFreeDesk(room)) return [];
+    const cells = [];
+    for (let i3 = 0; i3 < DESK_WIDTH_UNITS; i3++) cells.push({ x: room.deskX + i3, y: room.deskY });
+    return cells;
+  }
   function deskAnchorX(room) {
     switch (room.deskPosition) {
       case "cornerLeft":
@@ -34497,13 +34525,32 @@ dialog.modal .modal-actions {
       };
     };
   }
+  function deskFields(room) {
+    return { deskPosition: room.deskPosition, deskX: room.deskX, deskY: room.deskY };
+  }
+  function withDeskFields(room, fields) {
+    const next = { ...room, ...fields };
+    if (fields.deskX === void 0) delete next.deskX;
+    if (fields.deskY === void 0) delete next.deskY;
+    return next;
+  }
   function setDeskPositionCommand(deskPosition) {
     return (state) => {
-      const old = state.room.deskPosition;
+      const old = deskFields(state.room);
       return {
         label: "Pult verschieben",
-        do: (s3) => patch(s3, { room: { ...s3.room, deskPosition } }),
-        undo: (s3) => patch(s3, { room: { ...s3.room, deskPosition: old } })
+        do: (s3) => patch(s3, { room: withDeskFields(s3.room, { deskPosition }) }),
+        undo: (s3) => patch(s3, { room: withDeskFields(s3.room, old) })
+      };
+    };
+  }
+  function moveDeskCommand(deskX, deskY) {
+    return (state) => {
+      const old = deskFields(state.room);
+      return {
+        label: "Pult verschieben",
+        do: (s3) => patch(s3, { room: withDeskFields(s3.room, { deskPosition: "free", deskX, deskY }) }),
+        undo: (s3) => patch(s3, { room: withDeskFields(s3.room, old) })
       };
     };
   }
@@ -34680,8 +34727,9 @@ dialog.modal .modal-actions {
   var UNIT = 42;
   var PAD = 24;
   var DESK_ROWS = 1.3;
-  function occupiedCells(rows, seats, excludeRowId) {
+  function occupiedCells(room, seats, excludeRowId) {
     const cells = /* @__PURE__ */ new Set();
+    for (const c4 of deskCells(room)) cells.add(`${c4.x},${c4.y}`);
     for (const s3 of seats) {
       if (s3.rowId === excludeRowId) continue;
       cells.add(`${Math.round(s3.x)},${Math.round(s3.y)}`);
@@ -34703,16 +34751,39 @@ dialog.modal .modal-actions {
   function validateRowPlacement(state, row, x2, y3, excludeRowId) {
     if (x2 < 0 || y3 < 0) return { valid: false, reason: "Position darf nicht negativ sein." };
     const cells = rowSeatCells(row, x2, y3);
-    const occupied = occupiedCells(state.rows, state.seats, excludeRowId);
+    const occupied = occupiedCells(state.room, state.seats, excludeRowId);
     const collides = cells.some((c4) => occupied.has(`${Math.round(c4.x)},${Math.round(c4.y)}`));
     const outOfBounds = cells.some((c4) => c4.x >= state.room.gridWidth || c4.y >= state.room.gridHeight);
-    if (collides) return { valid: false, reason: "Reihe kollidiert mit einer anderen Reihe." };
+    if (collides) return { valid: false, reason: "Reihe kollidiert mit einer anderen Reihe oder dem Pult." };
     if (outOfBounds) return { valid: false, reason: "Reihe liegt au\xDFerhalb des Rasters. Raster vergr\xF6\xDFern oder Position \xE4ndern." };
     return { valid: true };
+  }
+  function validateDeskPlacement(state, x2, y3) {
+    if (x2 < 0 || y3 < 0) return { valid: false, reason: "Pult darf nicht au\xDFerhalb des Rasters liegen. F\xFCr die Front die Schaltfl\xE4chen \u201EEcke links / Mitte / Ecke rechts\u201C nutzen." };
+    if (x2 + DESK_WIDTH_UNITS > state.room.gridWidth || y3 >= state.room.gridHeight) {
+      return { valid: false, reason: "Pult liegt au\xDFerhalb des Rasters. Raster vergr\xF6\xDFern oder Position \xE4ndern." };
+    }
+    const occupied = new Set(state.seats.map((se2) => `${Math.round(se2.x)},${Math.round(se2.y)}`));
+    for (let i3 = 0; i3 < DESK_WIDTH_UNITS; i3++) {
+      if (occupied.has(`${x2 + i3},${y3}`)) return { valid: false, reason: "Pult kollidiert mit einer Sitzreihe." };
+    }
+    return { valid: true };
+  }
+  function findFreeDeskSlot(state) {
+    const { gridWidth, gridHeight } = state.room;
+    const cx = (gridWidth - DESK_WIDTH_UNITS) / 2;
+    const cy = (gridHeight - 1) / 2;
+    const candidates = [];
+    for (let y3 = 0; y3 < gridHeight; y3++) {
+      for (let x2 = 0; x2 + DESK_WIDTH_UNITS <= gridWidth; x2++) candidates.push({ x: x2, y: y3, d: Math.hypot(x2 - cx, y3 - cy) });
+    }
+    candidates.sort((a3, b2) => a3.d - b2.d);
+    return candidates.find((c4) => validateDeskPlacement(state, c4.x, c4.y).valid) || null;
   }
   function mountCanvas(container, store, uiState) {
     let dragRow = null;
     let dragSeat = null;
+    let dragDesk = null;
     let openRowMenuId = null;
     let pendingFocusSeatId = null;
     function dispatch(cmd) {
@@ -34754,6 +34825,53 @@ dialog.modal .modal-actions {
         if (state.room.deskPosition === pos) btn.classList.add("primary");
         btn.addEventListener("click", () => dispatch(setDeskPositionCommand(pos)));
         deskGroup.appendChild(btn);
+      }
+      const freeBtn = document.createElement("button");
+      freeBtn.textContent = "Im Raum";
+      freeBtn.title = "Pult frei im Raum platzieren (auch per Ziehen am Pult)";
+      if (isFreeDesk(state.room)) freeBtn.classList.add("primary");
+      freeBtn.addEventListener("click", () => {
+        if (isFreeDesk(state.room)) return;
+        const slot = findFreeDeskSlot(state);
+        if (!slot) {
+          showToast("Kein freier Platz f\xFCr das Pult im Raster. Raster vergr\xF6\xDFern oder eine Reihe verschieben.", { type: "error" });
+          return;
+        }
+        dispatch(moveDeskCommand(slot.x, slot.y));
+      });
+      deskGroup.appendChild(freeBtn);
+      if (isFreeDesk(state.room)) {
+        const xInput = document.createElement("input");
+        xInput.type = "number";
+        xInput.min = "0";
+        xInput.value = String(state.room.deskX);
+        xInput.style.width = "48px";
+        xInput.setAttribute("aria-label", "Pult x");
+        const yInput = document.createElement("input");
+        yInput.type = "number";
+        yInput.min = "0";
+        yInput.value = String(state.room.deskY);
+        yInput.style.width = "48px";
+        yInput.setAttribute("aria-label", "Pult y");
+        const applyDesk = () => {
+          const x2 = parseInt(xInput.value, 10);
+          const y3 = parseInt(yInput.value, 10);
+          const current = store.getState();
+          const check = Number.isFinite(x2) && Number.isFinite(y3) ? validateDeskPlacement(current, x2, y3) : { valid: false, reason: "Ung\xFCltige Pultposition." };
+          if (!check.valid) {
+            showToast(check.reason, { type: "error" });
+            xInput.value = String(current.room.deskX);
+            yInput.value = String(current.room.deskY);
+            return;
+          }
+          dispatch(moveDeskCommand(x2, y3));
+        };
+        xInput.addEventListener("change", applyDesk);
+        yInput.addEventListener("change", applyDesk);
+        deskGroup.appendChild(document.createTextNode("x"));
+        deskGroup.appendChild(xInput);
+        deskGroup.appendChild(document.createTextNode("y"));
+        deskGroup.appendChild(yInput);
       }
       bar.appendChild(deskGroup);
       const addBtn = document.createElement("button");
@@ -34850,7 +34968,9 @@ dialog.modal .modal-actions {
       const { room, rows, seats, people } = state;
       const peopleById = new Map(people.map((p3) => [p3.id, p3]));
       const width = room.gridWidth * UNIT + PAD * 2;
-      const height = (room.gridHeight + DESK_ROWS) * UNIT + PAD * 2;
+      const freeDesk = isFreeDesk(room);
+      const topRows = freeDesk ? 0.3 : DESK_ROWS;
+      const height = (room.gridHeight + topRows) * UNIT + PAD * 2;
       const svg2 = svgEl("svg", {
         class: "room-svg",
         width,
@@ -34860,18 +34980,19 @@ dialog.modal .modal-actions {
         "aria-label": `Sitzplan ${room.name}`
       });
       const originX = PAD;
-      const originY = PAD + DESK_ROWS * UNIT;
+      const originY = PAD + topRows * UNIT;
       const gx = (x2) => originX + x2 * UNIT;
       const gy = (y3) => originY + y3 * UNIT;
       svg2.appendChild(renderWallHatch(room, gx, gy, "left"));
       svg2.appendChild(renderWallHatch(room, gx, gy, "right"));
       svg2.appendChild(renderWallHatch(room, gx, gy, "back"));
-      const deskX = deskAnchorX(room);
+      const deskX = freeDesk ? room.deskX : deskAnchorX(room);
+      const deskTop = freeDesk ? gy(room.deskY) + UNIT * 0.15 : originY - DESK_ROWS * UNIT + 6;
       const deskGroup = svgEl("g", { class: "desk" });
-      deskGroup.appendChild(
-        svgEl("rect", { x: gx(deskX), y: originY - DESK_ROWS * UNIT + 6, width: DESK_WIDTH_UNITS * UNIT, height: UNIT * 0.7, rx: 4 })
-      );
-      deskGroup.appendChild(svgText(gx(deskX) + DESK_WIDTH_UNITS * UNIT / 2, originY - DESK_ROWS * UNIT + 6 + UNIT * 0.35 + 4, "Pult"));
+      deskGroup.appendChild(svgEl("title", {}, "Pult ziehen, um es im Raum zu platzieren"));
+      deskGroup.appendChild(svgEl("rect", { x: gx(deskX), y: deskTop, width: DESK_WIDTH_UNITS * UNIT, height: UNIT * 0.7, rx: 4 }));
+      deskGroup.appendChild(svgText(gx(deskX) + DESK_WIDTH_UNITS * UNIT / 2, deskTop + UNIT * 0.35 + 4, "Pult"));
+      deskGroup.addEventListener("pointerdown", (ev) => startDeskDrag(ev, room, svg2));
       svg2.appendChild(deskGroup);
       for (const row of rows) {
         const rowSeats = seats.filter((s3) => s3.rowId === row.id);
@@ -35005,6 +35126,52 @@ dialog.modal .modal-actions {
       if (dragRow) {
         handleRowDragMove(ev);
       }
+      if (dragDesk) {
+        handleDeskDragMove(ev);
+      }
+    }
+    function startDeskDrag(ev, room, svg2) {
+      ev.stopPropagation();
+      const free = isFreeDesk(room);
+      const startX = free ? room.deskX : Math.round(deskAnchorX(room));
+      const startY = free ? room.deskY : -1;
+      const ghost = svgEl("rect", { class: "desk-ghost", width: DESK_WIDTH_UNITS * UNIT, height: UNIT * 0.7, rx: 4, visibility: "hidden" });
+      svg2.appendChild(ghost);
+      dragDesk = { startX, startY, clientX: ev.clientX, clientY: ev.clientY, moved: false, ghost, svg: svg2 };
+      ev.target.setPointerCapture?.(ev.pointerId);
+      window.addEventListener("pointerup", onDeskPointerUp, { once: true });
+    }
+    function handleDeskDragMove(ev) {
+      const dx = Math.round((ev.clientX - dragDesk.clientX) / UNIT);
+      const dy = Math.round((ev.clientY - dragDesk.clientY) / UNIT);
+      if (!dragDesk.moved && Math.abs(ev.clientX - dragDesk.clientX) < 5 && Math.abs(ev.clientY - dragDesk.clientY) < 5) return;
+      dragDesk.moved = true;
+      dragDesk.previewX = dragDesk.startX + dx;
+      dragDesk.previewY = dragDesk.startY + dy;
+      const state = store.getState();
+      const valid = validateDeskPlacement(state, dragDesk.previewX, dragDesk.previewY).valid;
+      const free = isFreeDesk(state.room);
+      const topRows = free ? 0.3 : DESK_ROWS;
+      const g2 = dragDesk.ghost;
+      g2.setAttribute("x", PAD + dragDesk.previewX * UNIT);
+      g2.setAttribute("y", PAD + topRows * UNIT + dragDesk.previewY * UNIT + UNIT * 0.15);
+      g2.setAttribute("visibility", "visible");
+      g2.classList.toggle("invalid", !valid);
+    }
+    function onDeskPointerUp() {
+      if (!dragDesk) return;
+      const { moved, previewX, previewY, ghost } = dragDesk;
+      dragDesk = null;
+      ghost.remove();
+      if (!moved) return;
+      const state = store.getState();
+      const check = validateDeskPlacement(state, previewX, previewY);
+      if (!check.valid) {
+        showToast(check.reason, { type: "error" });
+        return;
+      }
+      if (isFreeDesk(state.room) && state.room.deskX === previewX && state.room.deskY === previewY) return;
+      dispatch(moveDeskCommand(previewX, previewY));
     }
     function onSeatPointerUp(ev) {
       if (!dragSeat) return;
@@ -36511,34 +36678,46 @@ ${clone2.outerHTML}
     }
     return { minX, minY, maxX, maxY };
   }
+  function withFreeDesk(room, bounds) {
+    if (!isFreeDesk(room)) return bounds;
+    return {
+      minX: Math.min(bounds.minX, room.deskX),
+      minY: Math.min(bounds.minY, room.deskY),
+      maxX: Math.max(bounds.maxX, room.deskX + DESK_WIDTH_UNITS),
+      maxY: Math.max(bounds.maxY, room.deskY + 1)
+    };
+  }
   function buildLayout(room, seats) {
-    const bounds = computeUsedBounds(room, seats);
+    const bounds = withFreeDesk(room, computeUsedBounds(room, seats));
+    const freeDesk = isFreeDesk(room);
+    const deskRows = freeDesk ? 0 : DESK_ROWS2;
     const gridW = Math.max(bounds.maxX - bounds.minX, 1);
     const gridH = Math.max(bounds.maxY - bounds.minY, 1);
     const contentUnitsW = gridW;
-    const contentUnitsH = gridH + DESK_ROWS2;
+    const contentUnitsH = gridH + deskRows;
     const contentAreaW = PAGE_W_MM - 2 * MARGIN_MM;
     const contentAreaH = PAGE_H_MM - 2 * MARGIN_MM;
     const unit = Math.min(contentAreaW / contentUnitsW, contentAreaH / contentUnitsH);
     const contentW = contentUnitsW * unit;
     const contentH = contentUnitsH * unit;
-    return { gridW, gridH, unit, contentW, contentH, originX: bounds.minX, originY: bounds.minY };
+    return { gridW, gridH, unit, contentW, contentH, deskRows, originX: bounds.minX, originY: bounds.minY };
   }
   function buildElements(room, rows, seats, people, layout) {
-    const { unit, gridW, gridH, contentW, contentH, originX = 0, originY = 0 } = layout;
+    const { unit, gridW, gridH, contentW, contentH, deskRows = DESK_ROWS2, originX = 0, originY = 0 } = layout;
     const peopleById = new Map(people.map((p3) => [p3.id, p3]));
     const elements2 = { rects: [], lines: [], texts: [] };
     const labelSize = Math.min(fitFontSize("", 0, unit * 0.24, unit * 0.13), MAX_LABEL_SIZE_MM);
-    const deskX = deskAnchorX({ ...room, gridWidth: gridW }) * unit;
-    const deskY = (DESK_ROWS2 - 0.7) * unit;
+    const freeDesk = isFreeDesk(room);
+    const deskX = (freeDesk ? room.deskX - originX : deskAnchorX({ ...room, gridWidth: gridW })) * unit;
+    const deskY = freeDesk ? (room.deskY - originY + 0.15) * unit : (DESK_ROWS2 - 0.7) * unit;
     const deskW = DESK_WIDTH_UNITS * unit;
     const deskH = 0.7 * unit;
     elements2.rects.push({ kind: "desk", x: deskX, y: deskY, w: deskW, h: deskH });
     elements2.texts.push({ kind: "desk-label", x: deskX + deskW / 2, y: deskY + deskH / 2, content: "Pult", size: labelSize });
     const labelGap = labelSize * 1.3 + LABEL_GAP_MM;
     const wallDefs = [
-      { side: "left", x1: 0, y1: DESK_ROWS2 * unit, x2: 0, y2: contentH, rotate: -90 },
-      { side: "right", x1: gridW * unit, y1: DESK_ROWS2 * unit, x2: gridW * unit, y2: contentH, rotate: 90 },
+      { side: "left", x1: 0, y1: deskRows * unit, x2: 0, y2: contentH, rotate: -90 },
+      { side: "right", x1: gridW * unit, y1: deskRows * unit, x2: gridW * unit, y2: contentH, rotate: 90 },
       { side: "back", x1: 0, y1: contentH, x2: gridW * unit, y2: contentH, rotate: 0 }
     ];
     for (const wd of wallDefs) {
@@ -36550,7 +36729,7 @@ ${clone2.outerHTML}
     }
     for (const seat of seats) {
       const x2 = (seat.x - originX) * unit;
-      const y3 = (seat.y - originY + DESK_ROWS2) * unit;
+      const y3 = (seat.y - originY + deskRows) * unit;
       const occupant = seat.occupantId ? peopleById.get(seat.occupantId) : null;
       elements2.rects.push({ kind: "seat", seatId: seat.id, x: x2, y: y3, w: unit, h: unit, blocked: seat.blocked });
       if (occupant) {
