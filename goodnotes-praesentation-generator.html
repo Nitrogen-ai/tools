@@ -134,9 +134,9 @@ footer{text-align:center;padding:40px 24px;border-top:1px solid var(--line);font
     </div>
     <pre id="log"></pre>
     <div class="privacy-note">🔒 Eure PDFs verlassen den Browser nie — es gibt keinen Server, keinen Upload, keine Speicherung. Der erste Klick lädt einmalig eine Python-Umgebung nach (~30 MB, danach vom Browser zwischengespeichert).</div>
-    <div class="callout warn" style="margin-top:14px;margin-bottom:0">
-      <h4>📄 Einseitig vs. mehrseitig</h4>
-      <p style="margin:0"><b>Einseitige</b> Aufgabenblätter funktionieren direkt zuverlässig. <b>Mehrseitige</b> Aufgabenblätter: Seit Oktober 2026 ist die Ursache der früher durcheinandergeratenen Seitenreihenfolge gefunden und behoben. GoodNotes sortiert die Seiten nach einem kurzen Sortierschlüssel je Seite, den das Werkzeug vorher zufällig vergeben hat; jetzt bekommt jede Seite einen aufsteigenden Schlüssel. Zusätzlich wird jede Seite so aufgebaut, wie GoodNotes eine auf dem iPad aus Einzelseiten zusammengefügte Datei speichert. Manuelles Zerlegen und Zusammenfügen ist damit nicht mehr nötig. Die erzeugte Datei trotzdem einmal öffnen und kurz prüfen, bevor ihr sie im Unterricht einsetzt.</p>
+    <div class="callout" style="margin-top:14px;margin-bottom:0">
+      <h4>📄 Ein- und mehrseitige Aufgabenblätter</h4>
+      <p style="margin:0">Beides funktioniert: Mehrseitige Aufgabenblätter werden in einem Durchgang erzeugt und erscheinen in GoodNotes in der richtigen Seitenreihenfolge (auf iPad und Mac geprüft, Oktober 2026). Zerlegen in Einzelseiten und Zusammenfügen von Hand ist nicht nötig.</p>
     </div>
   </div>
 </section>
@@ -161,7 +161,7 @@ footer{text-align:center;padding:40px 24px;border-top:1px solid var(--line);font
     <li><b>Werkzeug herunterladen</b> und entpacken (Button oben). Ihr braucht die ganze <code class="inline">goodnotes-praesentation-generator/</code>-Ordnerstruktur (Skripte + <code class="inline">templates/</code>-Ordner).</li>
     <li><b>KI-Chat mit Code-Ausführung öffnen</b> (siehe unten, welche kostenlos reicht) und alle Dateien aus dem entpackten Ordner sowie eure beiden PDFs (Aufgabenblatt + Lösungsblatt) hochladen.</li>
     <li><b>Bitten, das Skript auszuführen</b> — z. B.: „Führe <code class="inline">generate_goodnotes.py</code> mit meinem Aufgabenblatt als erstem und dem Lösungsblatt als zweitem Argument aus und gib mir die erzeugte <code class="inline">.goodnotes</code>-Datei zum Download." Falls <code class="inline">pymupdf</code> fehlt, reicht die Bitte „installiere zuerst <code class="inline">pymupdf</code> per pip".</li>
-    <li><b>Datei herunterladen</b> und einmal testweise in GoodNotes öffnen, bevor ihr euch im Unterricht darauf verlasst (siehe Hinweis zu Grenzen unten) — bei mehrseitigen Dateien kurz die Seitenreihenfolge prüfen (Standard ist der seitenweise Aufbau mit aufsteigenden Sortierschlüsseln; der frühere Aufbau mit einem gemeinsamen Anhang ist noch per <code class="inline">--shared-attachment</code> wählbar).</li>
+    <li><b>Datei herunterladen</b> und kurz in GoodNotes ansehen — ein- und mehrseitige Dateien kommen in der richtigen Reihenfolge an (der frühere Aufbau mit einem gemeinsamen Anhang ist noch per <code class="inline">--shared-attachment</code> wählbar).</li>
   </ol>
 
   <h3>Oder lokal, ganz ohne KI</h3>
@@ -212,8 +212,8 @@ python3 generate_goodnotes.py Arbeitsblatt.pdf Loesungsblatt.pdf \
   <div class="kicker">Ehrlich gesagt</div>
   <h2>Grenzen, die ihr kennen solltet</h2>
   <ul>
-    <li>Das ist eine <b>selbst zurückentwickelte Implementierung eines nicht dokumentierten Formats</b> — kein offizielles GoodNotes-Werkzeug. Jede frisch erzeugte Datei einmal testweise öffnen, bevor sie im Unterricht zum Einsatz kommt.</li>
-    <li><b>Seitenreihenfolge:</b> Früher geriet sie bei <b>mehrseitigen</b> Dokumenten häufig durcheinander. Ursache (Oktober 2026 gefunden): GoodNotes ordnet die Seiten nach einem kurzen Sortierschlüssel je Seite, den das Werkzeug zufällig vergeben hatte. Er wird jetzt aufsteigend vergeben. Nach dem Erzeugen die Reihenfolge trotzdem einmal kurz prüfen.</li>
+    <li>Das ist eine <b>selbst zurückentwickelte Implementierung eines nicht dokumentierten Formats</b> — kein offizielles GoodNotes-Werkzeug. Vor dem ersten Einsatz im Unterricht lohnt ein kurzer Blick in die erzeugte Datei, z. B. ob alle Antworten abgedeckt sind.</li>
+    <li><b>Seitenreihenfolge (behoben):</b> Früher geriet sie bei mehrseitigen Dokumenten oft durcheinander, weil das Werkzeug den Sortierschlüssel, nach dem GoodNotes die Seiten ordnet, zufällig vergab. Seit Oktober 2026 wird er aufsteigend vergeben; mehrseitige Dateien erscheinen auf iPad und Mac in der richtigen Reihenfolge.</li>
     <li><b>Erkennungsqualität hängt vom Material ab:</b> bei Arbeitsblättern mit vielen eingebetteten Vektorgrafiken (z. B. Strukturformeln) kann es hilfreich sein, vorab zu prüfen, dass Aufgaben- und Lösungsblatt bis auf die Antworten wirklich <i>positionsgleich</i> sind (siehe <code class="inline">render_preview.py</code> im Paket für eine Vorschau, bevor ihr euch auf das Ergebnis verlasst).</li>
   </ul>
 </section>
@@ -311,7 +311,7 @@ gg.build_document("/uploads/blank.pdf", "/uploads/solution.pdf", py_title, "/upl
     dlLink.download = filename;
     dlLink.textContent = `⬇ ${filename} herunterladen`;
     dlLink.style.display = 'inline-flex';
-    log(`Fertig — ${filename} (${outBytes.length} Bytes). Vor dem Einsatz im Unterricht einmal testweise in GoodNotes öffnen.`);
+    log(`Fertig — ${filename} (${outBytes.length} Bytes). Vor dem Einsatz kurz in GoodNotes ansehen, ob alle Antworten abgedeckt sind.`);
   } catch (e) {
     log("Fehler: " + (e && e.message ? e.message : e));
   } finally {
