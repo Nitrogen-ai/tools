@@ -87,8 +87,31 @@ MAX_STROKE_WIDTH = max(AVAILABLE_WIDTHS)
 # Gap between page blocks in per-page mode (see EventsBuilder.advance).
 PAGE_GAP_MS = 10_000
 
-def short_token():
-    return ''.join(random.choices('ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789', k=5))
+# Page sort keys. CreateNoteVersion field 4.1 (a short string such as "4fyTd") is
+# GoodNotes' page ORDER key: pages are shown sorted by it, compared byte-wise (ASCII:
+# digits < upper case < lower case). Found 2026-10-04 by diffing a generated LP05 file
+# that opened as pages 1, 3, 2 (keys "T2PsP", "wbm9F", "XgSew" -> T < X < w) with the
+# same file after moving page 3 back on the iPad: the only change was a new event 55
+# giving that page the key "xOTUg" (> "wbm9F"). Hand-merged files get ascending keys
+# from GoodNotes itself. This generator used to draw the keys at random, which was the
+# real cause of the long-standing multi-page order bug.
+KEY_ALPHABET = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'  # ASCII order
+KEY_LEN = 5
+
+def sort_keys(n):
+    """n strictly ascending, evenly spaced fixed-length keys with room before, between
+    and after them (for pages a teacher inserts later on the iPad)."""
+    base = len(KEY_ALPHABET)
+    step = base ** KEY_LEN // (n + 1)
+    keys = []
+    for i in range(1, n + 1):
+        v, k = i * step, ''
+        for _ in range(KEY_LEN):
+            v, r = divmod(v, base)
+            k = KEY_ALPHABET[r] + k
+        keys.append(k)
+    assert keys == sorted(keys) and len(set(keys)) == n
+    return keys
 
 def pick_width(height_canvas, by_width):
     """Pick the smallest available template whose width fully covers height_canvas,
@@ -229,6 +252,7 @@ def build_document(blank_pdf_path, solution_pdf_path, title, output_path, answer
     page_ids = sorted(new_uuid() for _ in range(n))
     temp_ids = sorted(new_uuid() for _ in range(n))
     first_temp_note_id = temp_ids[0]
+    page_keys = sort_keys(n)
 
     if per_page:
         # Per-page mode (default since 2026-10-04): rebuilds what GoodNotes itself
@@ -237,8 +261,8 @@ def build_document(blank_pdf_path, solution_pdf_path, title, output_path, answer
         # user-verified correct order). There every page has its OWN single-page
         # attachment (AddPage field 5 = 1) and the events come per page as one block
         # AddAttachment -> AddPage -> CreateNoteVersion -> CommitNoteContent, with the
-        # blocks seconds apart. Each block equals a single-page document, which has
-        # always imported in a stable way; only multi-page files had the order bug.
+        # blocks seconds apart. The page ORDER itself comes from the sort keys
+        # (see sort_keys); this layout just mirrors real files as closely as possible.
         att_ids = sorted(new_uuid() for _ in range(n))
         for pno in range(n):
             if pno:
@@ -253,13 +277,13 @@ def build_document(blank_pdf_path, solution_pdf_path, title, output_path, answer
             eb.add_attachment(att_ids[pno], file_uuid, len(pdf_bytes))
             rect = sol[pno].rect
             eb.add_page(page_ids[pno], att_ids[pno], 1, rect.width * SCALE, rect.height * SCALE)
-            eb.add_note_version(temp_ids[pno], page_ids[pno], short_token())
+            eb.add_note_version(temp_ids[pno], page_ids[pno], page_keys[pno])
             add_note(pno, temp_ids[pno])
     else:
         # Previous mode (--shared-attachment): one shared multi-page attachment with
         # 1-based page indices and three contiguous batches (all AddPage, all
         # CreateNoteVersion, then all CommitNoteContent). Kept for comparison; this is
-        # the mode that showed the multi-page order bug on the iPad.
+        # the mode that showed the multi-page order bug (then caused by random sort keys).
         attachment_id = new_uuid()
         file_uuid = new_uuid()
         # garbage=4,clean=True repairs malformed PDFs (e.g. an invalid dict key seen in
@@ -273,7 +297,7 @@ def build_document(blank_pdf_path, solution_pdf_path, title, output_path, answer
             rect = sol[pno].rect
             eb.add_page(page_ids[pno], attachment_id, pno + 1, rect.width * SCALE, rect.height * SCALE)
         for pno in range(n):
-            eb.add_note_version(temp_ids[pno], page_ids[pno], short_token())
+            eb.add_note_version(temp_ids[pno], page_ids[pno], page_keys[pno])
         for pno in range(n):
             add_note(pno, temp_ids[pno])
     index_notes = b''.join(note_entries)
