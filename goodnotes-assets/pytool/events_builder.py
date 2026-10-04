@@ -41,6 +41,14 @@ class EventsBuilder:
         self._ts_base_ms = now_ms()
         self._ts_counter = 0
 
+    def advance(self, ms):
+        """Shift all following timestamps forward by ms. Used between pages in per-page
+        mode: a document merged by hand on the iPad from single-page imports keeps each
+        import's own creation timestamps, so its page blocks sit seconds apart (about
+        10 s in the LP05 reference file), and GoodNotes shows that file in the right
+        order. Generated multi-page files with only 1 ms between pages did not."""
+        self._ts_base_ms += ms
+
     def _ts(self):
         import struct
         val = self._ts_base_ms + self._ts_counter

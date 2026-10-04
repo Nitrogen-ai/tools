@@ -84,6 +84,12 @@ def load_stroke_templates():
 
 MAX_STROKE_WIDTH = max(AVAILABLE_WIDTHS)
 
+# Gap between page blocks in per-page mode (see EventsBuilder.advance).
+PAGE_GAP_MS = 10_000
+
+def short_token():
+    return ''.join(random.choices('ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789', k=5))
+
 def pick_width(height_canvas, by_width):
     """Pick the smallest available template whose width fully covers height_canvas,
     not just mostly covers it - the user asked for exact, complete coverage of every
@@ -173,7 +179,7 @@ def render_thumbnail(pdf_path, out_path, page_no=0, max_dim=400):
     pix = page.get_pixmap(matrix=fitz.Matrix(zoom, zoom))
     pix.save(out_path)
 
-def build_document(blank_pdf_path, solution_pdf_path, title, output_path, answer_color=None, color_tolerance=40, grid=False):
+def build_document(blank_pdf_path, solution_pdf_path, title, output_path, answer_color=None, color_tolerance=40, grid=False, per_page=True):
     device_id_const = DEVICE_CONST
     layer_id_const = 5381  # opaque per-document constant, reused verbatim from the source document
 
@@ -188,102 +194,89 @@ def build_document(blank_pdf_path, solution_pdf_path, title, output_path, answer
     eb.add_create_document()
 
     index_attachments = bytearray()
-    index_notes = bytearray()
     zip_members = {}  # path -> bytes
 
-    # A real, native multi-page GoodNotes import embeds the WHOLE solution PDF as a
-    # single shared attachment, and each page's AddPage event references it with an
-    # explicit 1-based page_index (field 5) into that attachment - confirmed by
-    # diffing a genuinely native multi-page .goodnotes export. This generator used
-    # to split the PDF into one single-page attachment per page (each trivially
-    # "page 1 of its own attachment"), which gave GoodNotes no explicit, unambiguous
-    # signal for page order across multiple independent attachments - the likely
-    # root cause of the page-order bug documented in CLAUDE.md. Embedding one shared
-    # attachment with real page indices is both more faithful to native behavior and
-    # should give GoodNotes an explicit order to key off.
-    attachment_id = new_uuid()
-    file_uuid = new_uuid()
-    # garbage=4,clean=True repairs malformed PDFs (e.g. an invalid dict key seen in
-    # one real worksheet) that would otherwise make tobytes() raise a syntax error.
-    pdf_bytes = sol.tobytes(deflate=True, garbage=4, clean=True)
-    zip_members[f"attachments/{file_uuid}"] = pdf_bytes
-    index_attachments += W.delimited(
-        W.field_string(1, attachment_id) + W.field_string(2, f"attachments/{file_uuid}"))
-    eb.add_attachment(attachment_id, file_uuid, len(pdf_bytes))
-
-    # Three separate batches (AddPage for every page, then CreateNoteVersion for
-    # every page, then CommitNoteContent only for pages with actual ink), each
-    # emitted as one contiguous block, not interleaved per page. Confirmed against
-    # two independently hand-created, correctly-ordered reference documents (whose
-    # page order the user verified on-device): both show this exact three-block
-    # shape (2,2,2,2, 54,54,54,54, 102,102,...), never AddPage/NoteVersion/Commit
-    # interleaved per page like this generator used to do. That interleaving is the
-    # most likely real cause of the page-order bug (see CLAUDE.md "Page order").
-    pages = []  # (pno, page_id)
-    for pno in range(sol.page_count):
+    def answer_spans(pno):
         page = sol[pno]
-        rect = page.rect
-        width_canvas = rect.width * SCALE
-        height_canvas = rect.height * SCALE
-        page_id = new_uuid()
-        eb.add_page(page_id, attachment_id, pno + 1, width_canvas, height_canvas)
-        pages.append((pno, page_id))
-
-    first_temp_note_id = None
-    temp_ids = {}  # pno -> temp_note_id
-    for pno, page_id in pages:
-        temp_note_id = new_uuid()
-        temp_ids[pno] = temp_note_id
-        if first_temp_note_id is None:
-            first_temp_note_id = temp_note_id
-        short_token = ''.join(random.choices('ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789', k=5))
-        eb.add_note_version(temp_note_id, page_id, short_token)
-
-    for pno, page_id in pages:
-        page = sol[pno]
-        temp_note_id = temp_ids[pno]
-        final_note_id = increment_uuid_hex(temp_note_id)
-
-        # --- find answers on this page and build strokes ---
         if answer_color is not None:
-            spans = find_colored_spans(page, answer_color, tolerance=color_tolerance)
-        elif blank is not None and pno < blank.page_count:
+            return find_colored_spans(page, answer_color, tolerance=color_tolerance)
+        if blank is not None and pno < blank.page_count:
             # Text diff catches typed-in answers; drawing diff catches answers drawn
-            # as vector graphics instead (sketched spectra, occupied-orbital arrows,
-            # etc.) that diff_page() can't see at all since it only looks at PDF text.
+            # as vector graphics (see diff_pdfs). Grid mode: see CLAUDE.md "Grid mode".
             if grid:
-                # See diff_pdfs.diff_drawings' docstring and CLAUDE.md's "Grid mode":
-                # a table/timetable/seating-chart needs neutral-grey exclusion (not
-                # just near-white) and no clustering (each colored cell is already an
-                # exact rect; merging fuses whole edge-to-edge rows into oversized
-                # boxes). neutral_spread=0.05 was picked against Klassenplan 9-1: its
-                # structural grey is a spread of 0, its narrowest genuine subject
-                # color a spread of ~0.17, so 0.05 separates them with margin on both
-                # sides - re-check with a per-page print of drawing fill spreads before
-                # trusting it blind on a differently-styled grid document.
-                spans = diff_page(blank[pno], page) + diff_drawings(blank[pno], page, neutral_spread=0.05, cluster=False)
-            else:
-                spans = diff_page(blank[pno], page) + diff_drawings(blank[pno], page)
-        else:
-            spans = []
+                return diff_page(blank[pno], page) + diff_drawings(blank[pno], page, neutral_spread=0.05, cluster=False)
+            return diff_page(blank[pno], page) + diff_drawings(blank[pno], page)
+        return []
 
-        # Confirmed in both reference documents: a page with zero detected answers
-        # gets its CreateNoteVersion (above) but NO CommitNoteContent event at all -
-        # only pages with actual strokes are committed. The empty note still gets an
-        # index.notes.pb entry (0-byte file) under the same temp_id+1 final id, it's
-        # just never referenced by a 102 event. This generator previously committed
-        # every page unconditionally, another divergence from real files that likely
-        # contributed to the page-order bug.
+    def add_note(pno, temp_note_id):
+        """Empty pages get a 0-byte note and no CommitNoteContent (as in real files)."""
+        final_note_id = increment_uuid_hex(temp_note_id)
+        spans = answer_spans(pno)
         if spans:
             eb.commit_note(final_note_id)
             note_bytes = build_note_file(spans, by_width, device_id_const, layer_id_const)
         else:
             note_bytes = b''
         zip_members[f"notes/{final_note_id}"] = note_bytes
-        index_notes += W.delimited(
-            W.field_string(1, final_note_id) + W.field_string(2, f"notes/{final_note_id}"))
-
+        note_entries.append(W.delimited(
+            W.field_string(1, final_note_id) + W.field_string(2, f"notes/{final_note_id}")))
         print(f"  page {pno+1}: {len(spans)} answer(s) covered -> notes/{final_note_id}")
+
+    note_entries = []
+    n = sol.page_count
+    # Ascending ids per page: if GoodNotes ever falls back to sorting by id, the
+    # order is still the reading order.
+    page_ids = sorted(new_uuid() for _ in range(n))
+    temp_ids = sorted(new_uuid() for _ in range(n))
+    first_temp_note_id = temp_ids[0]
+
+    if per_page:
+        # Per-page mode (default since 2026-10-04): rebuilds what GoodNotes itself
+        # writes when single-page .goodnotes files are merged by hand on the iPad
+        # (reference: Profilkurs LP05 "05 Arduino - Einführung Präsentation.goodnotes",
+        # user-verified correct order). There every page has its OWN single-page
+        # attachment (AddPage field 5 = 1) and the events come per page as one block
+        # AddAttachment -> AddPage -> CreateNoteVersion -> CommitNoteContent, with the
+        # blocks seconds apart. Each block equals a single-page document, which has
+        # always imported in a stable way; only multi-page files had the order bug.
+        att_ids = sorted(new_uuid() for _ in range(n))
+        for pno in range(n):
+            if pno:
+                eb.advance(PAGE_GAP_MS)
+            single = fitz.open()
+            single.insert_pdf(sol, from_page=pno, to_page=pno)
+            pdf_bytes = single.tobytes(deflate=True, garbage=4, clean=True)
+            file_uuid = new_uuid()
+            zip_members[f"attachments/{file_uuid}"] = pdf_bytes
+            index_attachments.extend(W.delimited(
+                W.field_string(1, att_ids[pno]) + W.field_string(2, f"attachments/{file_uuid}")))
+            eb.add_attachment(att_ids[pno], file_uuid, len(pdf_bytes))
+            rect = sol[pno].rect
+            eb.add_page(page_ids[pno], att_ids[pno], 1, rect.width * SCALE, rect.height * SCALE)
+            eb.add_note_version(temp_ids[pno], page_ids[pno], short_token())
+            add_note(pno, temp_ids[pno])
+    else:
+        # Previous mode (--shared-attachment): one shared multi-page attachment with
+        # 1-based page indices and three contiguous batches (all AddPage, all
+        # CreateNoteVersion, then all CommitNoteContent). Kept for comparison; this is
+        # the mode that showed the multi-page order bug on the iPad.
+        attachment_id = new_uuid()
+        file_uuid = new_uuid()
+        # garbage=4,clean=True repairs malformed PDFs (e.g. an invalid dict key seen in
+        # one real worksheet) that would otherwise make tobytes() raise a syntax error.
+        pdf_bytes = sol.tobytes(deflate=True, garbage=4, clean=True)
+        zip_members[f"attachments/{file_uuid}"] = pdf_bytes
+        index_attachments.extend(W.delimited(
+            W.field_string(1, attachment_id) + W.field_string(2, f"attachments/{file_uuid}")))
+        eb.add_attachment(attachment_id, file_uuid, len(pdf_bytes))
+        for pno in range(n):
+            rect = sol[pno].rect
+            eb.add_page(page_ids[pno], attachment_id, pno + 1, rect.width * SCALE, rect.height * SCALE)
+        for pno in range(n):
+            eb.add_note_version(temp_ids[pno], page_ids[pno], short_token())
+        for pno in range(n):
+            add_note(pno, temp_ids[pno])
+    index_notes = b''.join(note_entries)
 
     eb.close_view(first_temp_note_id)
 
@@ -327,6 +320,10 @@ if __name__ == '__main__':
                           'cell as its own precise rect instead of merging touching cells into one '
                           'oversized box. Requires blank_pdf (diff mode); incompatible with --color. '
                           'See CLAUDE.md\'s "Grid mode" section, built for Klassenplan 9-1.')
+    ap.add_argument('--shared-attachment', action='store_true',
+                     help='Old multi-page layout: one shared PDF attachment for all pages '
+                          '(showed the page-order bug on the iPad). Default is per-page mode: '
+                          'one single-page attachment per page, like a hand-merged document.')
     args = ap.parse_args()
 
     if args.color and args.blank_pdf:
@@ -342,4 +339,5 @@ if __name__ == '__main__':
         answer_color = tuple(int(hexs[i:i+2], 16) for i in (0, 2, 4))
 
     build_document(args.blank_pdf, args.solution_pdf, args.title, args.output,
-                    answer_color=answer_color, color_tolerance=args.color_tolerance, grid=args.grid)
+                    answer_color=answer_color, color_tolerance=args.color_tolerance, grid=args.grid,
+                    per_page=not args.shared_attachment)
