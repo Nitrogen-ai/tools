@@ -1,0 +1,1238 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Zugangsdaten-Mappe — ClassroomSpark</title>
+<meta name="description" content="Zugangsdaten ordnen: Zweck eingeben, Kategorie wird automatisch erkannt, Masterübersicht als PDF oder HTML exportieren. Passwörter werden nur von Hand eingetragen.">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+[hidden]{display:none!important}
+:root{
+  --bg:#FFFDF7;--surface:#FFF9EE;--card:#FFFFFF;
+  --ink:#1A1A2E;--ink2:#3D3D5C;--ink3:#7A7A9C;
+  --violet:#8B5CF6;--violet2:#7C3AED;--violetGlow:#EDE9FE;
+  --mint:#10B981;--amber:#F59E0B;--coral:#EF4444;
+  --line:rgba(26,26,46,.10);
+  --radius:16px;--shadow:0 4px 24px rgba(26,26,46,.06);
+  --c-email:#2563eb;--c-bank:#0f766e;--c-general:#c2410c;
+}
+body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--ink);line-height:1.5}
+button,input,select,textarea{font:inherit;color:inherit}
+.wrap{max-width:1280px;margin:0 auto;padding:0 20px}
+
+header.top{background:linear-gradient(135deg,#1c1428,#2a1f3d);color:#fff;padding:22px 0 20px}
+.top-inner{display:flex;gap:16px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.brand h1{font-size:1.55rem;font-weight:800;letter-spacing:-.01em}
+.brand p{color:#ffffffb0;font-size:.95rem;margin-top:2px}
+.top-actions{display:flex;gap:8px;flex-wrap:wrap}
+.top-actions .btn{background:#ffffff14;color:#fff;border-color:#ffffff30}
+.top-actions .btn:hover{background:#ffffff26}
+
+.btn{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:#fff;border-radius:10px;padding:8px 14px;font-weight:600;font-size:.92rem;cursor:pointer;transition:.15s}
+.btn:hover{border-color:var(--violet);color:var(--violet2)}
+.btn-primary{background:linear-gradient(135deg,var(--violet),var(--violet2));color:#fff;border-color:transparent}
+.btn-primary:hover{color:#fff;filter:brightness(1.08)}
+.btn-ghost{background:transparent}
+.btn-danger:hover{border-color:var(--coral);color:var(--coral)}
+.btn-sm{padding:4px 9px;font-size:.82rem;border-radius:8px}
+
+.notice{margin:18px 0 0;background:#fff;border:1px solid var(--line);border-left:5px solid var(--violet);border-radius:12px;padding:12px 16px;font-size:.93rem;color:var(--ink2);box-shadow:var(--shadow)}
+.notice b{color:var(--ink)}
+
+.grid{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr);gap:18px;margin:18px 0}
+@media (max-width:900px){.grid{grid-template-columns:1fr}}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px 20px}
+.panel h2{font-size:1.12rem;font-weight:800;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.panel h2 .step{display:inline-grid;place-items:center;width:26px;height:26px;border-radius:50%;background:var(--violetGlow);color:var(--violet2);font-size:.85rem}
+
+.tabs{display:flex;gap:4px;background:#f3f1fb;padding:4px;border-radius:12px;margin-bottom:14px}
+.tabs button{flex:1;border:0;background:transparent;padding:8px;border-radius:9px;font-weight:600;cursor:pointer;color:var(--ink3)}
+.tabs button.on{background:#fff;color:var(--violet2);box-shadow:0 1px 4px rgba(0,0,0,.08)}
+
+label.lbl{display:block;font-weight:700;font-size:.88rem;margin:12px 0 5px;color:var(--ink2)}
+.inp,select.inp,textarea.inp{width:100%;border:1.5px solid #e2e0ea;border-radius:10px;padding:9px 12px;background:#fff;outline:none;transition:.15s}
+.inp:focus{border-color:var(--violet);box-shadow:0 0 0 3px var(--violetGlow)}
+.inp.big{font-size:1.08rem;padding:12px 14px}
+textarea.inp{resize:vertical;min-height:70px}
+.hint{font-size:.82rem;color:var(--ink3);margin-top:4px}
+
+.detect{margin-top:10px;border-radius:12px;background:#faf9fe;border:1px dashed #d9d3f3;padding:10px 12px}
+.detect-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.chip{border:1.5px solid #e2e0ea;background:#fff;border-radius:999px;padding:6px 12px;font-weight:700;font-size:.86rem;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.chip .dot{width:10px;height:10px;border-radius:50%}
+.chip.on{color:#fff;border-color:transparent}
+.detect .why{font-size:.82rem;color:var(--ink3);margin-top:7px}
+.detect .why b{color:var(--ink2)}
+.conf{font-size:.75rem;font-weight:700;border-radius:6px;padding:1px 7px;margin-left:4px}
+.conf.hi{background:#dcfce7;color:#166534}.conf.mid{background:#fef9c3;color:#854d0e}.conf.lo{background:#fee2e2;color:#991b1b}
+
+.pwwarn{margin-top:8px;background:#fff1f2;border:1px solid #fecdd3;color:#9f1239;border-radius:10px;padding:8px 12px;font-size:.86rem;display:none}
+.pwwarn.show{display:block}
+
+.fields{display:grid;grid-template-columns:1fr 1fr;gap:0 12px}
+@media (max-width:560px){.fields{grid-template-columns:1fr}}
+.secrets-preview{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.secret-pill{background:#fff;border:1.5px dashed #c9c2ea;color:var(--ink2);border-radius:8px;padding:3px 10px;font-size:.82rem}
+.form-actions{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap}
+
+.qi-table{width:100%;border-collapse:collapse;margin-top:12px;font-size:.88rem}
+.qi-table th{text-align:left;font-size:.75rem;text-transform:uppercase;letter-spacing:.04em;color:var(--ink3);padding:6px 4px;border-bottom:1px solid var(--line)}
+.qi-table td{padding:6px 4px;border-bottom:1px solid var(--line);vertical-align:top}
+.qi-table select,.qi-table input[type=text]{width:100%;border:1.5px solid #e2e0ea;border-radius:8px;padding:5px 7px;font-size:.86rem}
+.qi-flag{color:#9f1239;font-size:.78rem;margin-top:3px}
+
+.cat-block{margin-bottom:14px}
+.cat-head{display:flex;align-items:center;gap:8px;font-weight:800;padding:7px 10px;border-radius:10px;color:#fff;font-size:.95rem}
+.cat-head .count{margin-left:auto;font-size:.8rem;background:#ffffff30;border-radius:999px;padding:1px 9px}
+.cat-head svg{width:18px;height:18px}
+.entry{display:flex;gap:10px;align-items:center;padding:8px 10px;border-bottom:1px solid var(--line)}
+.entry:last-child{border-bottom:0}
+.entry .t{font-weight:700}
+.entry .s{font-size:.8rem;color:var(--ink3)}
+.entry .acts{margin-left:auto;display:flex;gap:4px;flex-shrink:0}
+.entry.editing{background:var(--violetGlow);border-radius:8px}
+.empty{color:var(--ink3);font-size:.88rem;padding:8px 10px;font-style:italic}
+
+.export-bar{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+.export-bar .opt{display:flex;flex-direction:column;gap:4px;font-size:.85rem;font-weight:600;color:var(--ink2)}
+.export-bar .opt .inp{padding:7px 10px}
+.check{display:flex;align-items:center;gap:6px;font-size:.88rem;font-weight:600;color:var(--ink2);cursor:pointer}
+.export-btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+.preview-wrap{margin-top:16px;background:#e9e8f0;border-radius:14px;padding:18px;max-height:900px;overflow:auto}
+
+footer{color:var(--ink3);font-size:.82rem;text-align:center;padding:10px 0 30px}
+footer a{color:var(--violet2)}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(30px);background:#1c1428;color:#fff;padding:10px 18px;border-radius:12px;font-weight:600;opacity:0;transition:.25s;pointer-events:none;z-index:20}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+@media print{
+  body{background:#fff}
+  header.top,.notice,.grid,#exportPanel .export-bar,#exportPanel .export-btns,#exportPanel h2,footer,.toast,.no-print{display:none!important}
+  #exportPanel{border:0;box-shadow:none;padding:0}
+  .preview-wrap{background:none;padding:0;max-height:none;overflow:visible;margin:0}
+  .wrap{max-width:none;padding:0}
+}
+</style>
+<style id="mappeCss"></style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap top-inner">
+    <div class="brand">
+      <h1>🔐 Zugangsdaten-Mappe</h1>
+      <p>Zugänge sortieren, automatisch einordnen, als Masterübersicht drucken – Passwörter nur von Hand.</p>
+    </div>
+    <div class="top-actions">
+      <button class="btn" id="btnSample">Beispiel laden</button>
+      <button class="btn" id="btnSave" title="Einträge (ohne Passwörter) als Datei sichern">💾 Sichern</button>
+      <button class="btn" id="btnLoad" title="Gesicherte Datei wieder laden">📂 Laden</button>
+      <button class="btn btn-danger" id="btnClear">Alles leeren</button>
+      <input type="file" id="fileLoad" accept=".json,application/json" hidden>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="notice">
+    <b>Absichtlich ohne Passwortfeld:</b> Hier wird nur erfasst, <i>wofür</i> ein Zugang ist (Anbieter, Benutzername, Kartenendziffern …).
+    Passwörter, PINs und Codes trägt man nach dem Ausdrucken <b>von Hand</b> in die vorgesehenen Kästchen ein.
+    Alle Angaben bleiben in diesem Browser – es wird nichts hochgeladen.
+  </div>
+
+  <div class="grid">
+    <!-- ═════ Abfragemaske ═════ -->
+    <section class="panel" id="formPanel">
+      <h2><span class="step">1</span> Zugang erfassen</h2>
+      <div class="tabs">
+        <button class="on" data-tab="single">Einzeln erfassen</button>
+        <button data-tab="bulk">Liste einfügen</button>
+      </div>
+
+      <div id="tabSingle">
+        <label class="lbl" for="purpose">Wofür ist dieser Zugang?</label>
+        <input class="inp big" id="purpose" autocomplete="off" placeholder="z. B. Sparkasse EC-Karte · GMX-Mail · FRITZ!Box WLAN · ADAC">
+        <div class="hint">Einfach in eigenen Worten – die Kategorie wird automatisch erkannt. E-Mail-Adressen, Webadressen, „endet auf 1234“ oder „Nr. 12345“ werden gleich in die passenden Felder übernommen.</div>
+        <div class="pwwarn" id="pwWarn"></div>
+
+        <div class="detect">
+          <div class="detect-row" id="catChips"></div>
+          <div class="detect-row" style="margin-top:8px">
+            <select class="inp" id="subSel" style="max-width:320px"></select>
+          </div>
+          <div class="why" id="why"></div>
+        </div>
+
+        <div class="fields" id="fields"></div>
+
+        <label class="lbl" for="note">Hinweis (optional)</label>
+        <textarea class="inp" id="note" rows="2" placeholder="z. B. „Zwei-Faktor über Handy“, „Vertrag läuft bis 2027“ – keine Passwörter!"></textarea>
+
+        <label class="lbl" for="secrets">Felder zum handschriftlichen Eintragen</label>
+        <input class="inp" id="secrets" placeholder="z. B. PIN, Passwort">
+        <div class="hint">Kommagetrennt. Diese Felder erscheinen in der Übersicht als leere Kästchen.</div>
+        <div class="secrets-preview" id="secretsPreview"></div>
+
+        <div class="form-actions">
+          <button class="btn btn-primary" id="btnAdd">＋ Eintrag speichern</button>
+          <button class="btn btn-ghost" id="btnCancel" hidden>Abbrechen</button>
+        </div>
+      </div>
+
+      <div id="tabBulk" hidden>
+        <label class="lbl" for="bulk">Eine Zeile pro Zugang</label>
+        <textarea class="inp" id="bulk" rows="8" placeholder="GMX max.muster@gmx.de&#10;Sparkasse Girocard endet auf 4711&#10;FRITZ!Box WLAN&#10;Handy Telekom&#10;ADAC Mitgliedsnr 123456789&#10;Amazon&#10;Netflix"></textarea>
+        <div class="hint">Zum Beispiel aus einer alten Notiz oder einem Zettel abgetippt – ohne die Passwörter. Wörter, die wie ein Passwort aussehen, werden markiert und standardmäßig entfernt.</div>
+        <div class="form-actions">
+          <button class="btn btn-primary" id="btnAnalyze">🔎 Erkennen</button>
+          <button class="btn" id="btnTakeAll" hidden>✓ Alle übernehmen</button>
+        </div>
+        <div id="bulkPreview"></div>
+      </div>
+    </section>
+
+    <!-- ═════ Einträge ═════ -->
+    <section class="panel" id="listPanel">
+      <h2><span class="step">2</span> Sortierte Einträge <span style="margin-left:auto;font-size:.85rem;color:var(--ink3);font-weight:600" id="totalCount"></span></h2>
+      <div id="list"></div>
+    </section>
+  </div>
+
+  <!-- ═════ Export ═════ -->
+  <section class="panel" id="exportPanel">
+    <h2><span class="step">3</span> Masterübersicht exportieren</h2>
+    <div class="export-bar">
+      <label class="opt">Mappe für
+        <input class="inp" id="owner" placeholder="z. B. Papa / Name" style="width:200px">
+      </label>
+      <label class="opt">Leerkarten je Kategorie
+        <select class="inp" id="blanks" style="width:130px">
+          <option value="0">keine</option><option value="1">1</option><option value="2">2</option><option value="4">4</option><option value="6">6</option>
+        </select>
+      </label>
+      <label class="check"><input type="checkbox" id="newPage"> jede Kategorie auf neuer Seite</label>
+      <label class="check"><input type="checkbox" id="changed"> Zeile „zuletzt geändert“</label>
+    </div>
+    <div class="export-btns">
+      <button class="btn btn-primary" id="btnPdf">⬇ PDF herunterladen</button>
+      <button class="btn btn-primary" id="btnHtml">⬇ HTML herunterladen</button>
+      <button class="btn" id="btnPrint">🖨 Drucken</button>
+    </div>
+    <div class="hint" style="margin-top:6px">Tipp: Mit Bleistift ausfüllen – dann lassen sich geänderte Passwörter leicht nachtragen. Ausgefüllte Blätter sicher aufbewahren, nicht bei den Karten.</div>
+    <div class="preview-wrap"><div class="mappe" id="preview"></div></div>
+  </section>
+</div>
+
+<footer>Zugangsdaten-Mappe · Teil von <a href="https://nitrogen-ai.github.io/ClassroomSpark/#cat-tools">ClassroomSpark</a> · läuft komplett offline im Browser</footer>
+<div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+/* ════════════════════════════════════════════════════════════
+   Datenmodell: Kategorien und Unterarten
+   ════════════════════════════════════════════════════════════ */
+const CATS = [
+  {id:'email',   name:'E-Mail-Konten',            color:'#2563eb', tint:'#eef3ff', icon:'mail',
+   desc:'E-Mail-Postfächer und ihre Wiederherstellung'},
+  {id:'bank',    name:'Bankkarten',               color:'#0f766e', tint:'#e8f6f2', icon:'card',
+   desc:'Girocard, Kreditkarte, Online-Banking, Bezahldienste'},
+  {id:'general', name:'Allgemeine Zugangsdaten',  color:'#c2410c', tint:'#fff2e8', icon:'key',
+   desc:'Computer, WLAN, Telefon, Mitgliedschaften, Online-Konten …'},
+];
+const CAT = Object.fromEntries(CATS.map(c => [c.id, c]));
+const L4 = ['last4','Kartennr. (letzte 4 Ziffern)'];
+const SPERR = 'Karte verloren? Sperr-Notruf 116 116';
+const SUBS = {
+  email: [
+    {id:'mailbox', name:'E-Mail-Postfach', fields:[['provider','Anbieter'],['address','E-Mail-Adresse'],['recovery','Wiederherstellung (Telefon / Ersatz-Adresse)']], secrets:['Passwort']},
+  ],
+  bank: [
+    {id:'girocard', name:'Girocard / Debitkarte', fields:[['bank','Bank / Sparkasse'],['holder','Karteninhaber/in'],L4,['valid','gültig bis']], secrets:['PIN'], info:SPERR},
+    {id:'credit',   name:'Kreditkarte', fields:[['bank','Herausgeber / Bank'],['brand','Kartenart (Visa, Mastercard …)'],L4,['valid','gültig bis']], secrets:['PIN'], info:SPERR},
+    {id:'online',   name:'Online-Banking', fields:[['bank','Bank / Sparkasse'],['login','Anmeldename / Legitimations-ID'],['web','Webseite / App'],['tan','TAN-Verfahren']], secrets:['PIN / Passwort']},
+    {id:'pay',      name:'Bezahldienst', fields:[['provider','Dienst'],['login','Anmelde-E-Mail']], secrets:['Passwort']},
+  ],
+  general: [
+    {id:'computer',  name:'Computer & Geräte', fields:[['device','Gerät'],['account','Benutzerkonto / Anmeldename']], secrets:['Passwort / PIN']},
+    {id:'wlan',      name:'WLAN & Router', fields:[['ssid','Netzwerkname (SSID)'],['router','Router (Modell)'],['admin','Router-Adresse (z. B. fritz.box)']], secrets:['WLAN-Schlüssel','Router-Kennwort']},
+    {id:'phone',     name:'Telefon & Handy', fields:[['device','Gerät / Rufnummer'],['provider','Anbieter'],['customer','Kundennummer']], secrets:['SIM-PIN','PUK','Entsperrcode']},
+    {id:'member',    name:'Mitgliedschaften', fields:[['org','Verein / Organisation'],['number','Mitgliedsnummer'],['login','Anmeldung (E-Mail / Name)']], secrets:['Passwort']},
+    {id:'online',    name:'Online-Konten & Shops', fields:[['service','Dienst'],['web','Webadresse'],['login','Benutzername / E-Mail']], secrets:['Passwort']},
+    {id:'media',     name:'Streaming & Medien', fields:[['service','Dienst'],['web','Webadresse'],['login','Benutzername / E-Mail']], secrets:['Passwort']},
+    {id:'contracts', name:'Verträge & Versorger', fields:[['provider','Anbieter'],['customer','Kunden- / Vertragsnummer'],['login','Benutzername / E-Mail']], secrets:['Passwort']},
+    {id:'gov',       name:'Behörden & Gesundheit', fields:[['authority','Stelle'],['login','Benutzername / Kennung'],['web','Webadresse']], secrets:['Passwort / PIN']},
+    {id:'other',     name:'Sonstiges', fields:[['service','Wofür genau'],['login','Benutzername']], secrets:['Passwort']},
+  ],
+};
+const subOf = (cat, sub) => SUBS[cat].find(s => s.id === sub) || SUBS[cat][0];
+const subIndex = (cat, sub) => SUBS[cat].findIndex(s => s.id === sub);
+
+/* ════════════════════════════════════════════════════════════
+   Automatische Erkennung
+   Regel: [Muster, Kategorie, Unterart|null, Gewicht, Anbietername|null, Zielfeld|null, nurUnterart]
+   ════════════════════════════════════════════════════════════ */
+const R = (re, cat, sub, w, prov=null, field=null, subOnly=false) => ({re, cat, sub, w, prov, field, subOnly});
+const RULES = [
+  // E-Mail-Anbieter
+  R(/\bgmx\b/, 'email','mailbox',4,'GMX'),
+  R(/\bweb\.?de\b/, 'email','mailbox',4,'WEB.DE'),
+  R(/t-?online/, 'email','mailbox',3,'T-Online'),
+  R(/\bg-?mail\b|googlemail/, 'email','mailbox',4,'Gmail'),
+  R(/outlook|hotmail|\blive\.(de|com)\b/, 'email','mailbox',4,'Outlook'),
+  R(/icloud[- ]?mail|\bme\.com\b/, 'email','mailbox',4,'iCloud'),
+  R(/\byahoo\b/, 'email','mailbox',4,'Yahoo'),
+  R(/freenet/, 'email','mailbox',3,'freenet'),
+  R(/posteo/, 'email','mailbox',4,'Posteo'),
+  R(/mailbox\.org/, 'email','mailbox',4,'mailbox.org'),
+  R(/\baol\b/, 'email','mailbox',4,'AOL'),
+  R(/\barcor\b/, 'email','mailbox',4,'Arcor'),
+  R(/\bionos\b|1&1 ?mail/, 'email','mailbox',3,'IONOS'),
+  R(/e-?mail|\bmail\b|postfach|webmail/, 'email','mailbox',2),
+  // Banken
+  R(/sparkasse/, 'bank',null,3,'Sparkasse','bank'),
+  R(/volksbank|raiffeisen|vr[- ]?bank/, 'bank',null,3,'Volksbank','bank'),
+  R(/deutsche bank/, 'bank',null,3,'Deutsche Bank','bank'),
+  R(/commerzbank/, 'bank',null,3,'Commerzbank','bank'),
+  R(/postbank/, 'bank',null,3,'Postbank','bank'),
+  R(/\bing\b|ing-?diba/, 'bank',null,3,'ING','bank'),
+  R(/\bdkb\b/, 'bank',null,3,'DKB','bank'),
+  R(/comdirect/, 'bank',null,3,'comdirect','bank'),
+  R(/hypovereinsbank|\bhvb\b/, 'bank',null,3,'HypoVereinsbank','bank'),
+  R(/targobank/, 'bank',null,3,'Targobank','bank'),
+  R(/santander/, 'bank',null,3,'Santander','bank'),
+  R(/\bn26\b/, 'bank',null,3,'N26','bank'),
+  R(/consors/, 'bank',null,3,'Consorsbank','bank'),
+  R(/sparda/, 'bank',null,3,'Sparda-Bank','bank'),
+  R(/\bpsd\b/, 'bank',null,3,'PSD Bank','bank'),
+  R(/berliner bank/, 'bank',null,3,'Berliner Bank','bank'),
+  R(/\bbank\b|\bkonto ?nr|\biban\b/, 'bank',null,2),
+  R(/giro ?card|\bec[- ]?karte|\bec\b|bank ?karte|debit ?karte|maestro|\bv ?pay\b/, 'bank','girocard',4),
+  R(/kredit ?karte/, 'bank','credit',4),
+  R(/\bvisa\b/, 'bank','credit',4,'Visa','brand'),
+  R(/master ?card/, 'bank','credit',4,'Mastercard','brand'),
+  R(/american express|\bamex\b/, 'bank','credit',4,'American Express','brand'),
+  R(/online[- ]?banking|\bbanking\b|push ?tan|photo ?tan|chip ?tan|\btan\b|s-?id-?check|securego/, 'bank','online',4),
+  R(/paypal/, 'bank','pay',5,'PayPal'),
+  R(/klarna/, 'bank','pay',5,'Klarna'),
+  R(/apple ?pay|google ?pay/, 'bank','pay',4),
+  R(/\bkarte\b/, 'bank','girocard',1),
+  R(/\bapp\b|\bonline\b|zugang|login|anmeld/, 'bank','online',1,null,null,true),
+  // Allgemein: Computer
+  R(/computer|\bpc\b|laptop|notebook|rechner|windows|macbook|\bimac\b|\bmac\b|ipad|tablet|drucker|bildschirm ?sperre/, 'general','computer',3),
+  // WLAN
+  R(/fritz ?!? ?box/, 'general','wlan',5,'FRITZ!Box','router'),
+  R(/speedport/, 'general','wlan',5,'Speedport','router'),
+  R(/easybox/, 'general','wlan',5,'EasyBox','router'),
+  R(/wlan|wi-?fi|router|repeater|netzwerk|internet ?zugang|\bssid\b/, 'general','wlan',4),
+  // Telefon
+  R(/handy|smartphone|iphone|android|telefon|festnetz|\bsim\b|\bpuk\b|mobilfunk|rufnummer|anrufbeantworter|mailbox-?pin|samsung|galaxy/, 'general','phone',3),
+  R(/telekom/, 'general','phone',2,'Telekom','provider'),
+  R(/vodafone/, 'general','phone',2,'Vodafone','provider'),
+  R(/\bo2\b/, 'general','phone',2,'o2','provider'),
+  R(/congstar/, 'general','phone',3,'congstar','provider'),
+  R(/aldi ?talk/, 'general','phone',3,'ALDI TALK','provider'),
+  R(/lidl ?connect/, 'general','phone',3,'Lidl Connect','provider'),
+  R(/1&1/, 'general','phone',2,'1&1','provider'),
+  // Mitgliedschaften
+  R(/\badac\b/, 'general','member',5,'ADAC','org'),
+  R(/mitglied|verein|\bclub\b|fitness|gewerkschaft|bahn ?card|payback|kundenkarte|bibliothek|bücherei|\bvdk\b|\bsovd\b|\bkirche\b|sportverein|\bdav\b/, 'general','member',3),
+  // Online-Konten
+  R(/amazon/, 'general','online',4,'Amazon','service'),
+  R(/\bebay\b/, 'general','online',4,'eBay','service'),
+  R(/kleinanzeigen/, 'general','online',4,'Kleinanzeigen','service'),
+  R(/\botto\b/, 'general','online',3,'OTTO','service'),
+  R(/zalando/, 'general','online',4,'Zalando','service'),
+  R(/apple[- ]?id|apple[- ]?konto|icloud/, 'general','online',4,'Apple-ID','service'),
+  R(/google[- ]?konto|google[- ]?account/, 'general','online',4,'Google-Konto','service'),
+  R(/microsoft[- ]?konto|microsoft[- ]?account/, 'general','online',4,'Microsoft-Konto','service'),
+  R(/facebook/, 'general','online',4,'Facebook','service'),
+  R(/whatsapp/, 'general','online',4,'WhatsApp','service'),
+  R(/instagram/, 'general','online',4,'Instagram','service'),
+  R(/doctolib/, 'general','online',4,'Doctolib','service'),
+  R(/lieferando/, 'general','online',4,'Lieferando','service'),
+  R(/booking/, 'general','online',3,'Booking.com','service'),
+  R(/deutsche bahn|bahn\.de|\bdb navigator\b/, 'general','online',4,'Deutsche Bahn','service'),
+  R(/\bshop\b|onlineshop|\bkonto\b|login|anmeldung|portal/, 'general','online',1),
+  // Streaming & Medien
+  R(/netflix/, 'general','media',5,'Netflix','service'),
+  R(/spotify/, 'general','media',5,'Spotify','service'),
+  R(/disney/, 'general','media',4,'Disney+','service'),
+  R(/\bdazn\b/, 'general','media',5,'DAZN','service'),
+  R(/\bsky\b/, 'general','media',4,'Sky','service'),
+  R(/youtube/, 'general','media',4,'YouTube','service'),
+  R(/prime ?video/, 'general','media',5,'Prime Video','service'),
+  R(/audible/, 'general','media',5,'Audible','service'),
+  R(/magenta ?tv/, 'general','media',5,'MagentaTV','service'),
+  R(/waipu/, 'general','media',5,'waipu.tv','service'),
+  R(/zattoo/, 'general','media',5,'Zattoo','service'),
+  R(/zeitung|e-?paper|\babo\b|mediathek|streaming|hörbuch/, 'general','media',3),
+  // Verträge & Versorger
+  R(/stadtwerke|\bstrom\b|\bgas\b|wasser|versicherung|allianz|\bhuk\b|\bergo\b|vattenfall|e\.?on|rundfunk|vertrag|kundenportal|miete|hausverwaltung|energie/, 'general','contracts',3),
+  // Behörden & Gesundheit
+  R(/elster/, 'general','gov',5,'ELSTER','authority'),
+  R(/finanzamt|steuer/, 'general','gov',4,'Finanzamt','authority'),
+  R(/krankenkasse|\baok\b|\btk\b|techniker|barmer|\bdak\b|\bikk\b/, 'general','gov',4),
+  R(/ausweis|bund ?id|rente|rentenversicherung|\barzt|e-?rezept|gesundheit|\bepa\b|patientenakte|beihilfe|bürgeramt|\bkfz\b/, 'general','gov',3),
+];
+
+const RE_EMAIL = /[\w.+-]+@[\w-]+(?:\.[\w-]+)+/;
+const RE_URL = /\b(?:https?:\/\/)?(?:www\.)?[a-z0-9-]+(?:\.[a-z0-9-]+)*\.(?:de|com|net|org|eu|at|ch|io|info|box|tv)(?:\/\S*)?\b/i;
+const RE_LAST4 = /(?:endet auf|endziffern?|endung|letzte 4(?: ziffern)?|\*{2,}|x{3,}|…|\.\.\.)\s*:?\s*(\d{4})\b/i;
+const RE_NUMBER = /(?:mitglieds-?nr\.?|mitgliedsnummer|kunden-?nr\.?|kundennummer|vertrags-?nr\.?|vertragsnummer|\bnr\.?)\s*:?\s*([a-z0-9][a-z0-9-]{2,})/i;
+
+function looksLikePassword(tok){
+  const t = tok.replace(/^[„"'(\[]+|[“"')\].,;:]+$/g, '');
+  if (t.length < 6 || /@/.test(t) || RE_URL.test(t)) return false;
+  const lower = /[a-zäöüß]/.test(t), upper = /[A-ZÄÖÜ]/.test(t), digit = /\d/.test(t);
+  const special = /[!?#$%&*+=§\/;:_~^]/.test(t);
+  if (special && digit && (lower || upper)) return true;
+  if (t.length >= 9 && lower && upper && digit && (t.match(/\d/g) || []).length >= 2) return true;
+  return false;
+}
+
+function analyze(raw, {stripFlagged = true} = {}){
+  const text = String(raw || '');
+  const flagged = text.split(/\s+/).filter(looksLikePassword);
+  let rest = text;
+  const found = {};
+  const m1 = rest.match(RE_EMAIL); if (m1){ found.email = m1[0]; rest = rest.replace(m1[0], ' '); }
+  const m2 = rest.match(RE_LAST4); if (m2){ found.last4 = m2[1]; rest = rest.replace(m2[0], ' '); }
+  const m3 = rest.match(RE_NUMBER); if (m3){ found.number = m3[1]; rest = rest.replace(m3[0], ' '); }
+  if (stripFlagged) for (const f of flagged) rest = rest.replace(f, ' ');
+  const lowFull = (text.replace(RE_EMAIL, ' ') + ' ').toLowerCase();
+  const m4 = rest.match(RE_URL);
+  if (m4 && !/^web\.de$/i.test(m4[0])){
+    found.url = m4[0];
+    if (/^(https?:|www\.)/i.test(m4[0])) rest = rest.replace(m4[0], ' '); // nackte Domains wie „amazon.de“ bleiben im Titel
+  }
+
+  const catScore = {email:0, bank:0, general:0}, subScore = {};
+  const hits = []; const provs = {};
+  for (const r of RULES){
+    const m = lowFull.match(r.re);
+    if (!m) continue;
+    if (!r.subOnly){ catScore[r.cat] += r.w; hits.push({cat:r.cat, word:m[0].trim()}); }
+    if (r.sub){ const k = r.cat + '/' + r.sub; subScore[k] = (subScore[k] || 0) + r.w; }
+    if (r.prov) (provs[r.cat] = provs[r.cat] || []).push({name:r.prov, field:r.field});
+  }
+  // Adresse eines Mail-Anbieters zählt leicht für E-Mail (nur wenn sonst nichts anderes überwiegt)
+  if (found.email) catScore.email += 1.5;
+
+  let cat = 'general', best = 0;
+  for (const c of ['email','bank','general']) if (catScore[c] > best){ best = catScore[c]; cat = c; }
+  let sub = null, sb = 0;
+  for (const s of SUBS[cat]){ const v = subScore[cat + '/' + s.id] || 0; if (v > sb){ sb = v; sub = s.id; } }
+  if (!sub) sub = best === 0 ? 'other' : SUBS[cat][0].id;
+  if (best === 0) cat = 'general';
+  const total = Object.values(catScore).reduce((a,b) => a+b, 0);
+  const conf = best === 0 ? 'lo' : (best >= 3 && best / total >= .6 ? 'hi' : 'mid');
+
+  // Anbieter: aus Mail-Adresse ableiten, wenn sonst nichts gefunden
+  let prov = provs[cat] || [];
+  if (!prov.length && cat === 'email' && found.email){
+    const d = found.email.split('@')[1].toLowerCase();
+    for (const r of RULES) if (r.cat === 'email' && r.prov && r.re.test(d)){ prov = [{name:r.prov}]; break; }
+  }
+
+  const title = rest.replace(/\s+/g, ' ').replace(/^[\s,;:–—-]+|[\s,;:–—-]+$/g, '').trim();
+  return {cat, sub, conf, hits: hits.filter(h => h.cat === cat), prov, found, flagged, title};
+}
+
+/* Erkannte Teile in die Felder der Unterart verteilen */
+function valuesFor(cat, sub, a){
+  const keys = subOf(cat, sub).fields.map(f => f[0]);
+  const has = k => keys.includes(k);
+  const v = {};
+  const put = (val, ...cands) => { if (!val) return; const k = cands.find(c => has(c) && !v[c]); if (k) v[k] = val; };
+  for (const pv of a.prov) put(pv.name, pv.field, 'provider','bank','org','authority','service','router','device');
+  put(a.found.email, 'address','login','account');
+  put(a.found.url, 'web','admin');
+  put(a.found.last4, 'last4');
+  put(a.found.number, 'number','customer');
+  return v;
+}
+
+/* ════════════════════════════════════════════════════════════
+   Zustand & Speicherung (nur localStorage, keine Passwörter)
+   ════════════════════════════════════════════════════════════ */
+const KEY = 'zugangsdaten-mappe.v1';
+const uid = () => Math.random().toString(36).slice(2, 10);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const $ = s => document.querySelector(s);
+
+let state = load();
+function load(){
+  try {
+    const s = JSON.parse(localStorage.getItem(KEY));
+    if (s && Array.isArray(s.entries)) return normalizeState(s);
+  } catch(e){}
+  return normalizeState({});
+}
+function normalizeState(s){
+  return {
+    owner: s.owner || '',
+    settings: Object.assign({blanks:1, newPage:true, changed:true}, s.settings || {}),
+    entries: (s.entries || []).filter(e => CAT[e.cat]).map(e => ({
+      id: e.id || uid(), cat: e.cat, sub: subOf(e.cat, e.sub).id, title: e.title || '',
+      values: e.values || {}, secrets: Array.isArray(e.secrets) ? e.secrets : subOf(e.cat, e.sub).secrets.slice(),
+      note: e.note || ''
+    })),
+  };
+}
+function persist(){ try { localStorage.setItem(KEY, JSON.stringify(state)); } catch(e){} }
+
+function sortedEntries(cat){
+  return state.entries.filter(e => e.cat === cat).sort((a, b) =>
+    subIndex(cat, a.sub) - subIndex(cat, b.sub) || a.title.localeCompare(b.title, 'de'));
+}
+function toast(msg){
+  const t = $('#toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+/* ════════════════════════════════════════════════════════════
+   Icons
+   ════════════════════════════════════════════════════════════ */
+const SVG = {
+  mail:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg>',
+  card:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="5" width="19" height="14" rx="2.5"/><path d="M2.5 10h19M6 15h4"/></svg>',
+  key:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="12" r="4"/><path d="M11.5 12H21M17 12v3.5M20 12v2.5"/></svg>',
+};
+
+/* ════════════════════════════════════════════════════════════
+   Formular (Einzeln erfassen)
+   ════════════════════════════════════════════════════════════ */
+let form = freshForm();
+function freshForm(){ return {editId:null, cat:'general', sub:'other', manual:false, values:{}, auto:{}, secretsManual:false, analysis:null}; }
+
+function renderChips(){
+  $('#catChips').innerHTML = CATS.map(c => {
+    const on = c.id === form.cat;
+    return `<button class="chip${on ? ' on' : ''}" data-cat="${c.id}" style="${on ? `background:${c.color}` : ''}">
+      <span class="dot" style="background:${on ? '#fff' : c.color}"></span>${esc(c.name)}</button>`;
+  }).join('');
+  $('#subSel').innerHTML = SUBS[form.cat].map(s => `<option value="${s.id}"${s.id === form.sub ? ' selected' : ''}>${esc(s.name)}</option>`).join('');
+}
+function renderWhy(){
+  const a = form.analysis, why = $('#why');
+  if (form.manual){ why.innerHTML = 'Kategorie <b>von Hand gewählt</b>.'; return; }
+  if (!a || !$('#purpose').value.trim()){ why.textContent = 'Noch nichts eingegeben – Kategorie wird beim Tippen erkannt.'; return; }
+  const label = {hi:'sicher', mid:'wahrscheinlich', lo:'unklar'}[a.conf];
+  const words = [...new Set(a.hits.map(h => h.word))].slice(0, 4).map(w => `„${esc(w)}“`).join(', ');
+  why.innerHTML = `Automatisch erkannt <span class="conf ${a.conf}">${label}</span>` +
+    (words ? ` – an ${words}` : ' – kein bekanntes Stichwort, bitte prüfen') +
+    '. Ein Klick auf eine andere Kategorie überschreibt die Erkennung.';
+}
+function renderFields(){
+  const sub = subOf(form.cat, form.sub);
+  $('#fields').innerHTML = sub.fields.map(([k, label]) =>
+    `<div><label class="lbl" for="f_${k}">${esc(label)}</label><input class="inp" id="f_${k}" data-key="${k}" value="${esc(form.values[k] || '')}" autocomplete="off"></div>`
+  ).join('');
+  if (!form.secretsManual) $('#secrets').value = sub.secrets.join(', ');
+  renderSecretsPreview();
+}
+function renderSecretsPreview(){
+  const list = parseSecrets($('#secrets').value);
+  $('#secretsPreview').innerHTML = list.map(s => `<span class="secret-pill">✍ ${esc(s)}: ________</span>`).join('');
+}
+const parseSecrets = s => s.split(',').map(x => x.trim()).filter(Boolean);
+
+function applyAnalysis(){
+  const text = $('#purpose').value;
+  const a = analyze(text);
+  form.analysis = a;
+  if (!form.manual){ form.cat = a.cat; form.sub = a.sub; }
+  const v = valuesFor(form.cat, form.sub, a);
+  // vorher automatisch gesetzte Werte entfernen, neue automatisch gefüllte eintragen
+  for (const k of Object.keys(form.auto)) if (form.values[k] === form.auto[k]) delete form.values[k];
+  form.auto = {};
+  for (const [k, val] of Object.entries(v)) if (!form.values[k]){ form.values[k] = val; form.auto[k] = val; }
+  const w = $('#pwWarn');
+  if (a.flagged.length){
+    w.innerHTML = `⚠ <b>${a.flagged.map(f => '„' + esc(f) + '“').join(', ')}</b> sieht wie ein Passwort aus. Bitte keine Passwörter eintippen – die gehören nur handschriftlich auf das ausgedruckte Blatt. <button class="btn btn-sm" id="btnStripPw" style="margin-left:6px">Entfernen</button>`;
+    w.classList.add('show');
+  } else w.classList.remove('show');
+  renderChips(); renderFields(); renderWhy();
+}
+
+function resetForm(){
+  form = freshForm();
+  $('#purpose').value = ''; $('#note').value = '';
+  $('#btnAdd').textContent = '＋ Eintrag speichern';
+  $('#btnCancel').hidden = true;
+  $('#pwWarn').classList.remove('show');
+  renderChips(); renderFields(); renderWhy();
+}
+
+function saveForm(){
+  const purpose = $('#purpose').value.trim();
+  const sub = subOf(form.cat, form.sub);
+  const values = {};
+  for (const [k] of sub.fields){ const v = (form.values[k] || '').trim(); if (v) values[k] = v; }
+  const a = form.analysis;
+  let title = (a && a.title) || purpose;
+  if (!title) title = values.provider || values.bank || values.service || values.org || values.authority || values.device || values.ssid || '';
+  if (!title){ toast('Bitte zuerst eintragen, wofür der Zugang ist.'); $('#purpose').focus(); return; }
+  if (a && a.flagged.length && !confirm('Im Zweck steht etwas, das wie ein Passwort aussieht. Trotzdem speichern?')) return;
+  const secrets = parseSecrets($('#secrets').value);
+  const entry = {id: form.editId || uid(), cat: form.cat, sub: sub.id, title, values, secrets: secrets.length ? secrets : sub.secrets.slice(), note: $('#note').value.trim()};
+  const i = state.entries.findIndex(e => e.id === entry.id);
+  if (i >= 0) state.entries[i] = entry; else state.entries.push(entry);
+  persist(); toast(i >= 0 ? 'Eintrag aktualisiert' : `Gespeichert unter „${CAT[entry.cat].name}“`);
+  resetForm(); renderAll();
+  $('#purpose').focus();
+}
+
+function editEntry(id){
+  const e = state.entries.find(x => x.id === id); if (!e) return;
+  form = {editId:id, cat:e.cat, sub:e.sub, manual:true, values:{...e.values}, auto:{}, secretsManual:true, analysis:null};
+  $('#purpose').value = e.title; $('#note').value = e.note || '';
+  $('#secrets').value = e.secrets.join(', ');
+  $('#btnAdd').textContent = '✓ Änderungen speichern';
+  $('#btnCancel').hidden = false;
+  switchTab('single');
+  renderChips(); renderFields(); renderWhy(); renderList();
+  $('#formPanel').scrollIntoView({behavior:'smooth', block:'start'});
+}
+
+/* ════════════════════════════════════════════════════════════
+   Liste einfügen (Mehrfacherfassung)
+   ════════════════════════════════════════════════════════════ */
+let bulkItems = [];
+function analyzeBulk(){
+  const lines = $('#bulk').value.split('\n').map(l => l.trim()).filter(Boolean);
+  bulkItems = lines.map(line => {
+    const a = analyze(line, {stripFlagged:false});
+    return {line, a, cat:a.cat, sub:a.sub, strip:true};
+  });
+  renderBulk();
+}
+function bulkTitle(it){
+  const a = analyze(it.line, {stripFlagged: it.strip});
+  return a.title || (a.prov[0] && a.prov[0].name) || it.line;
+}
+function renderBulk(){
+  const box = $('#bulkPreview');
+  $('#btnTakeAll').hidden = !bulkItems.length;
+  if (!bulkItems.length){ box.innerHTML = ''; return; }
+  box.innerHTML = `<table class="qi-table"><thead><tr><th style="width:38%">Bezeichnung</th><th>Kategorie</th><th>Art</th><th></th></tr></thead><tbody>` +
+    bulkItems.map((it, i) => {
+      if (!it.titleEdited) it.title = bulkTitle(it);
+      const conf = {hi:'sicher', mid:'wahrsch.', lo:'unklar'}[it.a.conf];
+      return `<tr>
+        <td><input type="text" data-i="${i}" data-k="title" value="${esc(it.title)}">
+          ${it.a.flagged.length ? `<div class="qi-flag">⚠ Mögliches Passwort: <label><input type="checkbox" data-i="${i}" data-k="strip"${it.strip ? ' checked' : ''}> entfernen</label></div>` : ''}</td>
+        <td><select data-i="${i}" data-k="cat">${CATS.map(c => `<option value="${c.id}"${c.id === it.cat ? ' selected' : ''}>${esc(c.name)}</option>`).join('')}</select>
+          <span class="conf ${it.a.conf}" style="margin:3px 0 0;display:inline-block">${conf}</span></td>
+        <td><select data-i="${i}" data-k="sub">${SUBS[it.cat].map(s => `<option value="${s.id}"${s.id === it.sub ? ' selected' : ''}>${esc(s.name)}</option>`).join('')}</select></td>
+        <td><button class="btn btn-sm btn-danger" data-i="${i}" data-k="del" title="Zeile verwerfen">✕</button></td>
+      </tr>`;
+    }).join('') + '</tbody></table>';
+}
+function takeAllBulk(){
+  let n = 0;
+  for (const it of bulkItems){
+    const a = analyze(it.line, {stripFlagged: it.strip});
+    const sub = subOf(it.cat, it.sub);
+    state.entries.push({id:uid(), cat:it.cat, sub:sub.id, title:(it.title || '').trim() || it.line,
+      values:valuesFor(it.cat, sub.id, a), secrets:sub.secrets.slice(), note:''});
+    n++;
+  }
+  bulkItems = []; $('#bulk').value = '';
+  renderBulk(); persist(); renderAll();
+  toast(`${n} Einträge übernommen`);
+}
+
+/* ════════════════════════════════════════════════════════════
+   Eintragsliste
+   ════════════════════════════════════════════════════════════ */
+function renderList(){
+  $('#totalCount').textContent = state.entries.length ? `${state.entries.length} Einträge` : '';
+  $('#list').innerHTML = CATS.map(c => {
+    const list = sortedEntries(c.id);
+    return `<div class="cat-block">
+      <div class="cat-head" style="background:${c.color}">${SVG[c.icon]} ${esc(c.name)}<span class="count">${list.length}</span></div>
+      ${list.length ? list.map(e => {
+        const detail = Object.values(e.values).filter(Boolean).slice(0, 2).join(' · ');
+        return `<div class="entry${e.id === form.editId ? ' editing' : ''}">
+          <div><div class="t">${esc(e.title)}</div><div class="s">${esc(subOf(e.cat, e.sub).name)}${detail ? ' · ' + esc(detail) : ''}</div></div>
+          <div class="acts"><button class="btn btn-sm" data-edit="${e.id}" title="Bearbeiten">✎</button><button class="btn btn-sm btn-danger" data-del="${e.id}" title="Löschen">🗑</button></div>
+        </div>`;
+      }).join('') : '<div class="empty">Noch keine Einträge.</div>'}
+    </div>`;
+  }).join('');
+}
+
+/* ════════════════════════════════════════════════════════════
+   Masterübersicht als HTML (Vorschau + HTML-Download + Drucken)
+   ════════════════════════════════════════════════════════════ */
+const MAPPE_CSS = `
+.mappe{--ink:#1f2633;font-family:Helvetica,Arial,sans-serif;color:var(--ink);line-height:1.35}
+.mappe *{box-sizing:border-box}
+.mappe .m-doc{width:210mm;max-width:100%;margin:0 auto;background:#fff;padding:14mm 14mm 16mm;box-shadow:0 2px 14px rgba(0,0,0,.12)}
+.mappe .m-stripe{display:flex;height:6px;border-radius:3px;overflow:hidden;margin-bottom:9mm}
+.mappe .m-stripe span{flex:1}
+.mappe .m-title{font-size:30pt;font-weight:800;letter-spacing:-.01em;line-height:1.05}
+.mappe .m-sub{font-size:15pt;color:#5b6475;margin-top:2mm}
+.mappe .m-owner{font-size:13pt;font-weight:700;margin-top:4mm}
+.mappe .m-date{font-size:10pt;color:#5b6475;margin-top:1mm}
+.mappe .m-box{background:#f6f7fb;border:1px solid #d9dde5;border-radius:8px;padding:4mm 5mm;margin-top:7mm;font-size:10pt}
+.mappe .m-box h4{font-size:11.5pt;margin:0 0 2mm}
+.mappe .m-box ul{margin:0;padding-left:5mm}
+.mappe .m-box li{margin:1mm 0}
+.mappe h3.m-toc-h{font-size:13pt;margin:8mm 0 3mm}
+.mappe .m-toc{display:grid;gap:3mm}
+.mappe .m-toc-row{display:flex;align-items:center;gap:4mm;border:1px solid #d9dde5;border-radius:8px;padding:3mm 4mm}
+.mappe .m-ico{width:11mm;height:11mm;border-radius:6px;display:grid;place-items:center;color:#fff;flex-shrink:0}
+.mappe .m-ico svg{width:6.5mm;height:6.5mm}
+.mappe .m-toc-row b{font-size:12.5pt;display:block}
+.mappe .m-toc-row small{color:#5b6475;font-size:9pt}
+.mappe .m-toc-row .m-n{margin-left:auto;font-weight:700;font-size:10pt;white-space:nowrap}
+.mappe .m-emerg{margin-top:7mm;border:1.5px solid #c2410c;border-radius:8px;padding:3.5mm 5mm;font-size:10pt}
+.mappe .m-emerg b{color:#c2410c}
+.mappe .m-line{display:flex;gap:3mm;align-items:flex-end;margin-top:4mm;font-size:10pt}
+.mappe .m-line i{flex:1;border-bottom:1px dotted #8a93a6;height:5mm}
+.mappe .m-sec{margin-top:9mm}
+.mappe .m-sec.m-np{break-before:page;page-break-before:always}
+.mappe .m-head{display:flex;align-items:center;gap:3mm;color:#fff;border-radius:7px;padding:2.5mm 4mm;font-size:14pt;font-weight:800;break-after:avoid}
+.mappe .m-head svg{width:6mm;height:6mm}
+.mappe .m-head span{margin-left:auto;font-size:9pt;font-weight:600}
+.mappe .m-grid{display:grid;grid-template-columns:1fr 1fr;gap:4mm;margin-top:4mm}
+.mappe .m-card{position:relative;border:1px solid #d9dde5;border-radius:7px;padding:3mm 3.5mm 3mm 6.5mm;break-inside:avoid;page-break-inside:avoid;background:#fff}
+.mappe .m-card:before{content:"";position:absolute;left:2mm;top:3.5mm;bottom:3.5mm;width:1.2mm;border-radius:1mm;background:var(--c)}
+.mappe .m-tag{font-size:7pt;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--c)}
+.mappe .m-card h5{font-size:11.5pt;margin:.5mm 0 1.5mm;font-weight:800;word-break:break-word}
+.mappe .m-row{display:grid;grid-template-columns:29mm 1fr;gap:2mm;font-size:9.5pt;margin:.8mm 0;align-items:end}
+.mappe .m-row dt{font-size:7.2pt;color:#6b7385;align-self:start;padding-top:.6mm}
+.mappe .m-row dd{margin:0;word-break:break-word;min-height:4.5mm}
+.mappe .m-row dd.m-blank{border-bottom:1px dotted #9aa2b3}
+.mappe .m-info{font-size:7.8pt;font-weight:700;color:var(--c);margin-top:1.2mm}
+.mappe .m-secret{display:flex;align-items:stretch;border:1px solid var(--c);background:var(--t);border-radius:5px;min-height:9mm;margin-top:1.6mm}
+.mappe .m-secret span{width:32mm;font-size:8pt;font-weight:700;color:var(--c);display:flex;align-items:center;padding:0 2mm;border-right:1px solid color-mix(in srgb,var(--c) 35%,#fff)}
+.mappe .m-secret i{flex:1;margin:0 3mm 2.2mm;border-bottom:1px dotted #8a93a6}
+.mappe .m-note{font-size:8.2pt;color:#5b6475;font-style:italic;margin-top:1.8mm}
+.mappe .m-changed{display:flex;gap:2mm;align-items:flex-end;font-size:7pt;color:#6b7385;margin-top:2.2mm}
+.mappe .m-changed i{width:28mm;border-bottom:1px dotted #9aa2b3;height:3.5mm}
+.mappe .m-foot{margin-top:9mm;font-size:7.5pt;color:#8a93a6;border-top:1px solid #e3e6ec;padding-top:2mm}
+.mappe .m-emptyhint{color:#8a93a6;font-style:italic;font-size:10pt;margin-top:6mm}
+@media print{
+  @page{size:A4;margin:12mm 12mm 14mm}
+  .mappe .m-doc{width:auto;padding:0;box-shadow:none}
+  .mappe .m-cover{break-after:page;page-break-after:always}
+  .mappe .m-sec:first-of-type{margin-top:0}
+}`;
+$('#mappeCss').textContent = MAPPE_CSS;
+
+const fmtDate = () => new Date().toLocaleDateString('de-DE', {day:'2-digit', month:'2-digit', year:'numeric'});
+const plural = n => n === 1 ? '1 Eintrag' : `${n} Einträge`;
+
+function blankEntry(cat){
+  const sub = SUBS[cat][cat === 'general' ? SUBS.general.length - 1 : 0];
+  return {blank:true, cat, sub:sub.id, title:'', values:{}, secrets: cat === 'general' ? ['Passwort / PIN'] : sub.secrets.slice(), note:''};
+}
+function sectionsData(){
+  const blanks = +state.settings.blanks || 0;
+  return CATS.map(c => {
+    const list = sortedEntries(c.id);
+    for (let i = 0; i < blanks; i++) list.push(blankEntry(c.id));
+    return {cat:c, list, real: list.filter(e => !e.blank).length};
+  }).filter(s => s.list.length);
+}
+const COVER_TIPS = [
+  'Passwörter, PINs und Codes nur hier von Hand eintragen – nie im Computer, Handy oder in einer E-Mail speichern.',
+  'Am besten mit Bleistift schreiben: Wird ein Passwort geändert, lässt es sich leicht ausradieren und neu eintragen.',
+  'Die Mappe sicher und getrennt von Karten und Geräten aufbewahren (z. B. Ordner im Schrank oder Tresor).',
+  'Freie Karten am Ende jeder Kategorie sind für neue Zugänge gedacht.',
+];
+
+function cardHtml(e, settings){
+  const c = CAT[e.cat], sub = subOf(e.cat, e.sub);
+  const rows = (e.blank ? [['_what','Wofür']] : []).concat(sub.fields).map(([k, label]) => {
+    const v = e.values[k];
+    return `<div class="m-row"><dt>${esc(label)}</dt><dd${v ? '' : ' class="m-blank"'}>${esc(v || '')}</dd></div>`;
+  }).join('');
+  return `<article class="m-card" style="--c:${c.color};--t:${c.tint}">
+    <div class="m-tag">${esc(e.blank ? 'Freie Karte' : sub.name)}</div>
+    ${e.blank ? '' : `<h5>${esc(e.title)}</h5>`}
+    <dl style="margin:0">${rows}</dl>
+    ${!e.blank && sub.info ? `<div class="m-info">${esc(sub.info)}</div>` : ''}
+    ${e.secrets.map(s => `<div class="m-secret"><span>${esc(s)}</span><i></i></div>`).join('')}
+    ${e.note ? `<div class="m-note">Hinweis: ${esc(e.note)}</div>` : ''}
+    ${settings.changed ? '<div class="m-changed">zuletzt geändert:<i></i></div>' : ''}
+  </article>`;
+}
+
+function overviewHtml(){
+  const s = state.settings, secs = sectionsData();
+  const owner = state.owner.trim();
+  const cover = `<div class="m-cover">
+    <div class="m-stripe">${CATS.map(c => `<span style="background:${c.color}"></span>`).join('')}</div>
+    <div class="m-title">Zugangsdaten</div>
+    <div class="m-sub">Masterübersicht</div>
+    ${owner ? `<div class="m-owner">für ${esc(owner)}</div>` : ''}
+    <div class="m-date">Stand: ${fmtDate()}</div>
+    <div class="m-box"><h4>So wird diese Mappe benutzt</h4><ul>${COVER_TIPS.map(t => `<li>${esc(t)}</li>`).join('')}</ul></div>
+    <h3 class="m-toc-h">Inhalt</h3>
+    <div class="m-toc">${CATS.map(c => {
+      const n = state.entries.filter(e => e.cat === c.id).length;
+      return `<div class="m-toc-row"><div class="m-ico" style="background:${c.color}">${SVG[c.icon]}</div>
+        <div><b>${esc(c.name)}</b><small>${esc(c.desc)}</small></div><div class="m-n">${plural(n)}</div></div>`;
+    }).join('')}</div>
+    <div class="m-emerg"><b>Karte verloren oder gestohlen?</b> Sperr-Notruf <b>116 116</b> – kostenlos, rund um die Uhr (aus dem Ausland: +49 116 116).</div>
+    <div class="m-line">Im Notfall weiß Bescheid:<i></i></div>
+    <div class="m-line">Telefon:<i></i></div>
+  </div>`;
+  const body = secs.length ? secs.map(({cat, list, real}) => `<section class="m-sec${s.newPage ? ' m-np' : ''}">
+      <div class="m-head" style="background:${cat.color}">${SVG[cat.icon]} ${esc(cat.name)}<span>${plural(real)}</span></div>
+      <div class="m-grid">${list.map(e => cardHtml(e, s)).join('')}</div>
+    </section>`).join('')
+    : '<div class="m-emptyhint">Noch keine Einträge – links erfassen, dann erscheint hier die Übersicht.</div>';
+  return `<div class="m-doc">${cover}${body}<div class="m-foot">Vertraulich · Zugangsdaten${owner ? ' · ' + esc(owner) : ''} · erstellt mit der Zugangsdaten-Mappe (ClassroomSpark)</div></div>`;
+}
+
+function renderPreview(){ $('#preview').innerHTML = overviewHtml(); }
+
+function downloadBlob(blob, name){
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+}
+function fileStem(){
+  const o = state.owner.trim().replace(/[^\wäöüÄÖÜß-]+/g, '-').replace(/^-|-$/g, '');
+  return 'Zugangsdaten' + (o ? '-' + o : '') + '-' + new Date().toISOString().slice(0, 10);
+}
+function downloadHtml(){
+  const doc = `<!DOCTYPE html><html lang="de"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Zugangsdaten – Masterübersicht</title><style>${MAPPE_CSS}
+body{margin:0;background:#eceef3;padding:20px 10px}
+.bar{max-width:210mm;margin:0 auto 12px;font:14px Helvetica,Arial,sans-serif;color:#3d4556;display:flex;gap:10px;align-items:center}
+.bar button{font:inherit;font-weight:700;border:0;border-radius:8px;padding:7px 14px;background:#7C3AED;color:#fff;cursor:pointer}
+@media print{body{background:#fff;padding:0}.bar{display:none}}
+</style></head><body><div class="bar"><button onclick="print()">Drucken / als PDF sichern</button> Passwörter nach dem Ausdrucken von Hand eintragen.</div>
+<div class="mappe">${overviewHtml()}</div></body></html>`;
+  downloadBlob(new Blob([doc], {type:'text/html;charset=utf-8'}), fileStem() + '.html');
+  toast('HTML-Übersicht heruntergeladen');
+}
+
+/* ════════════════════════════════════════════════════════════
+   PDF-Erzeugung ohne Bibliothek (Vektor-PDF, Helvetica, WinAnsi)
+   ════════════════════════════════════════════════════════════ */
+const PW = 595.28, PH = 841.89;
+const CP1252 = {'€':0x80,'‚':0x82,'„':0x84,'…':0x85,'‘':0x91,'’':0x92,'“':0x93,'”':0x94,'•':0x95,'–':0x96,'—':0x97};
+function winAnsi(s){
+  let o = '';
+  for (const ch of String(s)){
+    const c = ch.codePointAt(0);
+    let b = c < 128 ? c : CP1252[ch] || (c >= 0xA0 && c <= 0xFF ? c : 63);
+    if (c === 0x2009 || c === 0x202F) b = 32;
+    if (b < 32) b = 32;
+    o += (b === 40 || b === 41 || b === 92) ? '\\' + String.fromCharCode(b) : String.fromCharCode(b);
+  }
+  return o;
+}
+const mctx = document.createElement('canvas').getContext('2d');
+const FONTCSS = {F1:'', F2:'bold ', F3:'italic '};
+function tw(s, size, font = 'F1'){
+  mctx.font = FONTCSS[font] + '100px Helvetica, Arial, sans-serif';
+  return mctx.measureText(String(s)).width * size / 100 * 1.01;
+}
+function wrap(s, size, font, maxW){
+  const out = [];
+  for (const para of String(s).split('\n')){
+    let line = '';
+    for (let word of para.split(/\s+/).filter(Boolean)){
+      while (tw(word, size, font) > maxW){ // überlange Wörter hart umbrechen
+        let k = word.length; while (k > 1 && tw(word.slice(0, k), size, font) > maxW) k--;
+        if (line){ out.push(line); line = ''; }
+        out.push(word.slice(0, k)); word = word.slice(k);
+      }
+      const t = line ? line + ' ' + word : word;
+      if (tw(t, size, font) <= maxW) line = t; else { out.push(line); line = word; }
+    }
+    out.push(line);
+  }
+  return out.length ? out : [''];
+}
+const n2 = v => (Math.round(v * 100) / 100).toString();
+function rgb(hex){ const h = hex.replace('#', ''); return [0, 2, 4].map(i => n2(parseInt(h.substr(i, 2), 16) / 255)).join(' '); }
+
+class Pdf {
+  constructor(){ this.pages = []; this.cur = null; }
+  addPage(){ this.cur = []; this.pages.push(this.cur); return this.pages.length - 1; }
+  usePage(i){ this.cur = this.pages[i]; }
+  op(s){ this.cur.push(s); }
+  path(x, y, w, h, r){
+    const Y = PH - y - h, k = .5523 * r;
+    if (!r){ this.op(`${n2(x)} ${n2(Y)} ${n2(w)} ${n2(h)} re`); return; }
+    this.op(`${n2(x + r)} ${n2(Y)} m ${n2(x + w - r)} ${n2(Y)} l ${n2(x + w - r + k)} ${n2(Y)} ${n2(x + w)} ${n2(Y + r - k)} ${n2(x + w)} ${n2(Y + r)} c ` +
+      `${n2(x + w)} ${n2(Y + h - r)} l ${n2(x + w)} ${n2(Y + h - r + k)} ${n2(x + w - r + k)} ${n2(Y + h)} ${n2(x + w - r)} ${n2(Y + h)} c ` +
+      `${n2(x + r)} ${n2(Y + h)} l ${n2(x + r - k)} ${n2(Y + h)} ${n2(x)} ${n2(Y + h - r + k)} ${n2(x)} ${n2(Y + h - r)} c ` +
+      `${n2(x)} ${n2(Y + r)} l ${n2(x)} ${n2(Y + r - k)} ${n2(x + r - k)} ${n2(Y)} ${n2(x + r)} ${n2(Y)} c h`);
+  }
+  rect(x, y, w, h, {fill, stroke, lw = .7, r = 0} = {}){
+    this.op('q');
+    if (fill) this.op(rgb(fill) + ' rg');
+    if (stroke) this.op(rgb(stroke) + ' RG ' + n2(lw) + ' w');
+    this.path(x, y, w, h, r);
+    this.op(fill && stroke ? 'B' : fill ? 'f' : 'S');
+    this.op('Q');
+  }
+  line(x1, y1, x2, y2, {color = '#9aa2b3', lw = .6, dash = null} = {}){
+    this.op(`q ${rgb(color)} RG ${n2(lw)} w ${dash ? '[' + dash.join(' ') + '] 0 d ' : ''}1 J ${n2(x1)} ${n2(PH - y1)} m ${n2(x2)} ${n2(PH - y2)} l S Q`);
+  }
+  text(x, y, s, {size = 10, font = 'F1', color = '#1f2633'} = {}){
+    this.op(`BT /${font} ${n2(size)} Tf ${rgb(color)} rg ${n2(x)} ${n2(PH - y)} Td (${winAnsi(s)}) Tj ET`);
+  }
+  icon(kind, cx, cy, s, color = '#ffffff'){
+    const X = v => n2(cx + v * s), Y = v => n2(PH - (cy + v * s));
+    let d = '';
+    if (kind === 'mail'){
+      d = `${X(-.45)} ${Y(-.32)} ${n2(.9 * s)} ${n2(-.64 * s)} re S ${X(-.45)} ${Y(-.24)} m ${X(0)} ${Y(.08)} l ${X(.45)} ${Y(-.24)} l S`;
+    } else if (kind === 'card'){
+      d = `${X(-.48)} ${Y(-.32)} ${n2(.96 * s)} ${n2(-.64 * s)} re S ${X(-.48)} ${Y(-.1)} m ${X(.48)} ${Y(-.1)} l S ${X(-.32)} ${Y(.16)} m ${X(-.08)} ${Y(.16)} l S`;
+    } else {
+      const r = .2 * s, cx0 = cx - .26 * s, k = .5523 * r, cyp = PH - cy;
+      d = `${n2(cx0 + r)} ${n2(cyp)} m ${n2(cx0 + r)} ${n2(cyp + k)} ${n2(cx0 + k)} ${n2(cyp + r)} ${n2(cx0)} ${n2(cyp + r)} c ` +
+          `${n2(cx0 - k)} ${n2(cyp + r)} ${n2(cx0 - r)} ${n2(cyp + k)} ${n2(cx0 - r)} ${n2(cyp)} c ` +
+          `${n2(cx0 - r)} ${n2(cyp - k)} ${n2(cx0 - k)} ${n2(cyp - r)} ${n2(cx0)} ${n2(cyp - r)} c ` +
+          `${n2(cx0 + k)} ${n2(cyp - r)} ${n2(cx0 + r)} ${n2(cyp - k)} ${n2(cx0 + r)} ${n2(cyp)} c h S ` +
+          `${X(-.06)} ${Y(0)} m ${X(.48)} ${Y(0)} l S ${X(.26)} ${Y(0)} m ${X(.26)} ${Y(.18)} l S ${X(.42)} ${Y(0)} m ${X(.42)} ${Y(.14)} l S`;
+    }
+    this.op(`q ${rgb(color)} RG ${n2(.085 * s)} w 1 J 1 j ${d} Q`);
+  }
+  build(title){
+    const objs = [null, null];
+    const add = s => { objs.push(s); return objs.length; };
+    const fonts = ['Helvetica', 'Helvetica-Bold', 'Helvetica-Oblique'].map(f => add(`<< /Type /Font /Subtype /Type1 /BaseFont /${f} /Encoding /WinAnsiEncoding >>`));
+    const kids = [];
+    for (const p of this.pages){
+      const content = p.join('\n');
+      const cid = add(`<< /Length ${content.length} >>\nstream\n${content}\nendstream`);
+      kids.push(add(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${PW} ${PH}] /Resources << /Font << /F1 ${fonts[0]} 0 R /F2 ${fonts[1]} 0 R /F3 ${fonts[2]} 0 R >> >> /Contents ${cid} 0 R >>`));
+    }
+    objs[0] = '<< /Type /Catalog /Pages 2 0 R >>';
+    objs[1] = `<< /Type /Pages /Kids [${kids.map(k => k + ' 0 R').join(' ')}] /Count ${kids.length} >>`;
+    const d = new Date(), pad = v => String(v).padStart(2, '0');
+    const info = add(`<< /Title (${winAnsi(title)}) /Producer (Zugangsdaten-Mappe) /CreationDate (D:${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}${pad(d.getHours())}${pad(d.getMinutes())}) >>`);
+    let out = '%PDF-1.4\n%\xE2\xE3\xCF\xD3\n';
+    const offs = [];
+    objs.forEach((o, i) => { offs.push(out.length); out += `${i + 1} 0 obj\n${o}\nendobj\n`; });
+    const xref = out.length;
+    out += `xref\n0 ${objs.length + 1}\n0000000000 65535 f \n` + offs.map(o => String(o).padStart(10, '0') + ' 00000 n \n').join('') +
+      `trailer\n<< /Size ${objs.length + 1} /Root 1 0 R /Info ${info} 0 R >>\nstartxref\n${xref}\n%%EOF\n`;
+    const bytes = new Uint8Array(out.length);
+    for (let i = 0; i < out.length; i++) bytes[i] = out.charCodeAt(i) & 255;
+    return bytes;
+  }
+}
+
+const ML = 42, MR = 42, MT = 46, MB = 56, CW = PW - ML - MR, GAP = 12, COLW = (CW - GAP) / 2;
+const GREY = '#6b7385', LINE = '#d9dde5', DOT = [.8, 1.8];
+
+/* Karte vermessen → Höhe + Zeichenfunktion */
+function layoutCard(e, w, settings){
+  const c = CAT[e.cat], sub = subOf(e.cat, e.sub);
+  const ix = 16, iw = w - ix - 10, labelW = 80;
+  const ops = []; let y = 10;
+  const tag = (e.blank ? 'Freie Karte' : sub.name).toUpperCase(), tagY = y;
+  ops.push(p => p.text(ix, tagY + 7, tag, {size:6.8, font:'F2', color:c.color}));
+  y += 11;
+  if (!e.blank){
+    const tl = wrap(e.title, 11.5, 'F2', iw);
+    tl.forEach((l, i) => { const yy = y + 11 + i * 14; ops.push(p => p.text(ix, yy, l, {size:11.5, font:'F2'})); });
+    y += tl.length * 14 + 3;
+  }
+  const rows = (e.blank ? [['_what', 'Wofür']] : []).concat(sub.fields);
+  for (const [k, label] of rows){
+    const v = e.values[k] || '';
+    const ll = wrap(label, 7, 'F1', labelW - 6);
+    const vl = v ? wrap(v, 9.5, 'F1', iw - labelW) : [];
+    const h = Math.max(ll.length * 8.6, vl.length * 12, 15);
+    const y0 = y;
+    ops.push(p => {
+      ll.forEach((l, i) => p.text(ix, y0 + 8 + i * 8.6, l, {size:7, color:GREY}));
+      if (v) vl.forEach((l, i) => p.text(ix + labelW, y0 + 9.5 + i * 12, l, {size:9.5}));
+      else p.line(ix + labelW, y0 + h - 1, ix + iw, y0 + h - 1, {color:'#9aa2b3', dash:DOT});
+    });
+    y += h + 3;
+  }
+  if (!e.blank && sub.info){
+    const il = wrap(sub.info, 7.6, 'F2', iw); const y0 = y;
+    ops.push(p => il.forEach((l, i) => p.text(ix, y0 + 8 + i * 9.5, l, {size:7.6, font:'F2', color:c.color})));
+    y += il.length * 9.5 + 2;
+  }
+  for (const s of e.secrets){
+    y += 4;
+    const y0 = y, bh = 26, lw = 92;
+    const sl = wrap(s, 7.8, 'F2', lw - 10);
+    ops.push(p => {
+      p.rect(ix, y0, iw, bh, {fill:c.tint, stroke:c.color, lw:.7, r:4});
+      p.line(ix + lw, y0 + 4, ix + lw, y0 + bh - 4, {color:c.color, lw:.4});
+      const top = y0 + bh / 2 - (sl.length * 9) / 2 + 6.5;
+      sl.forEach((l, i) => p.text(ix + 6, top + i * 9, l, {size:7.8, font:'F2', color:c.color}));
+      p.line(ix + lw + 8, y0 + bh - 6.5, ix + iw - 8, y0 + bh - 6.5, {color:'#8a93a6', dash:DOT});
+    });
+    y += bh;
+  }
+  if (e.note){
+    y += 5;
+    const nl = wrap('Hinweis: ' + e.note, 8.2, 'F3', iw); const y0 = y;
+    ops.push(p => nl.forEach((l, i) => p.text(ix, y0 + 8 + i * 10.4, l, {size:8.2, font:'F3', color:'#5b6475'})));
+    y += nl.length * 10.4;
+  }
+  if (settings.changed){
+    y += 7; const y0 = y;
+    ops.push(p => {
+      p.text(ix, y0 + 7, 'zuletzt geändert:', {size:7, color:GREY});
+      const x0 = ix + tw('zuletzt geändert:', 7) + 4;
+      p.line(x0, y0 + 8, x0 + 80, y0 + 8, {color:'#9aa2b3', dash:DOT});
+    });
+    y += 10;
+  }
+  const h = y + 10;
+  return {h, draw(p, x, top, H){
+    p.rect(x, top, w, H, {fill:'#ffffff', stroke:LINE, lw:.7, r:6});
+    p.rect(x + 6, top + 10, 3.2, H - 20, {fill:c.color, r:1.6});
+    // Ursprung verschieben: alle relativen Koordinaten
+    const shim = {
+      text:(xx, yy, s, o) => p.text(x + xx, top + yy, s, o),
+      line:(a, b, cc, d, o) => p.line(x + a, top + b, x + cc, top + d, o),
+      rect:(xx, yy, ww, hh, o) => p.rect(x + xx, top + yy, ww, hh, o),
+    };
+    ops.forEach(f => f(shim));
+  }};
+}
+
+function drawSectionHead(p, cat, y, count, cont){
+  const h = cont ? 22 : 30;
+  p.rect(ML, y, CW, h, {fill:cat.color, r:6});
+  p.icon(cat.icon, ML + 17, y + h / 2, cont ? 12 : 16);
+  const name = cat.name + (cont ? ' (Fortsetzung)' : '');
+  p.text(ML + 34, y + h / 2 + (cont ? 4 : 5), name, {size:cont ? 11 : 14, font:'F2', color:'#ffffff'});
+  if (!cont){
+    const t = plural(count);
+    p.text(ML + CW - 12 - tw(t, 9, 'F2'), y + h / 2 + 3.2, t, {size:9, font:'F2', color:'#ffffff'});
+  }
+  return h;
+}
+
+function buildPdf(){
+  const s = state.settings, owner = state.owner.trim();
+  const p = new Pdf();
+  p.addPage(); // Deckblatt, wird am Ende gezeichnet (Seitenzahlen fürs Inhaltsverzeichnis)
+  const secs = sectionsData();
+  const startPage = {};
+  let y = Infinity;
+  const bottom = PH - MB;
+  for (const sec of secs){
+    const cards = sec.list.map(e => layoutCard(e, COLW, s));
+    const firstRowH = Math.max(cards[0].h, cards[1] ? cards[1].h : 0);
+    if (s.newPage || y === Infinity || y + 30 + 12 + firstRowH > bottom){ p.addPage(); y = MT; }
+    else y += 18;
+    startPage[sec.cat.id] = p.pages.length;
+    y += drawSectionHead(p, sec.cat, y, sec.real, false) + 12;
+    for (let i = 0; i < cards.length; i += 2){
+      const pair = cards.slice(i, i + 2);
+      const rh = Math.max(...pair.map(c => c.h));
+      if (y + rh > bottom){
+        p.addPage(); y = MT;
+        y += drawSectionHead(p, sec.cat, y, sec.real, true) + 10;
+      }
+      pair.forEach((c, j) => c.draw(p, ML + j * (COLW + GAP), y, rh));
+      y += rh + GAP;
+    }
+  }
+
+  // Deckblatt
+  p.usePage(0);
+  let cy = MT;
+  CATS.forEach((c, i) => p.rect(ML + i * CW / 3, cy, CW / 3, 6, {fill:c.color}));
+  cy += 52;
+  p.text(ML, cy, 'Zugangsdaten', {size:32, font:'F2'}); cy += 24;
+  p.text(ML, cy, 'Masterübersicht', {size:16, color:'#5b6475'}); cy += 24;
+  if (owner){ p.text(ML, cy, 'für ' + owner, {size:13, font:'F2'}); cy += 18; }
+  p.text(ML, cy, 'Stand: ' + fmtDate(), {size:10, color:'#5b6475'}); cy += 24;
+
+  const tipLines = COVER_TIPS.map(t => wrap(t, 9.8, 'F1', CW - 44));
+  const boxH = 34 + tipLines.reduce((a, l) => a + l.length * 13 + 4, 0);
+  p.rect(ML, cy, CW, boxH, {fill:'#f6f7fb', stroke:LINE, r:8});
+  p.text(ML + 16, cy + 22, 'So wird diese Mappe benutzt', {size:11.5, font:'F2'});
+  let ty = cy + 40;
+  tipLines.forEach(lines => {
+    p.text(ML + 18, ty, '•', {size:9.8, font:'F2', color:'#7C3AED'});
+    lines.forEach((l, i) => p.text(ML + 30, ty + i * 13, l, {size:9.8}));
+    ty += lines.length * 13 + 4;
+  });
+  cy += boxH + 28;
+
+  p.text(ML, cy, 'Inhalt', {size:13, font:'F2'}); cy += 12;
+  for (const c of CATS){
+    const n = state.entries.filter(e => e.cat === c.id).length;
+    const rh = 46;
+    p.rect(ML, cy, CW, rh, {fill:'#ffffff', stroke:LINE, r:7});
+    p.rect(ML + 10, cy + 8, 30, 30, {fill:c.color, r:6});
+    p.icon(c.icon, ML + 25, cy + 23, 18);
+    p.text(ML + 52, cy + 20, c.name, {size:12.5, font:'F2'});
+    p.text(ML + 52, cy + 34, c.desc, {size:8.8, color:'#5b6475'});
+    const right = plural(n) + (startPage[c.id] ? ' · ab Seite ' + startPage[c.id] : '');
+    p.text(ML + CW - 12 - tw(right, 9.8, 'F2'), cy + 27, right, {size:9.8, font:'F2'});
+    cy += rh + 8;
+  }
+  cy += 14;
+  const em1 = 'Karte verloren oder gestohlen?', em2 = ' Sperr-Notruf ', em3 = '116 116';
+  p.rect(ML, cy, CW, 46, {stroke:'#c2410c', lw:1.2, r:7});
+  let ex = ML + 14;
+  p.text(ex, cy + 19, em1, {size:10, font:'F2', color:'#c2410c'}); ex += tw(em1, 10, 'F2');
+  p.text(ex, cy + 19, em2, {size:10}); ex += tw(em2, 10);
+  p.text(ex, cy + 19, em3, {size:10, font:'F2', color:'#c2410c'});
+  p.text(ML + 14, cy + 34, 'kostenlos, rund um die Uhr · aus dem Ausland: +49 116 116', {size:9, color:'#5b6475'});
+  cy += 46 + 30;
+  for (const lab of ['Im Notfall weiß Bescheid:', 'Telefon:']){
+    p.text(ML, cy, lab, {size:10});
+    p.line(ML + tw(lab, 10) + 6, cy + 1.5, ML + CW, cy + 1.5, {color:'#8a93a6', dash:DOT});
+    cy += 26;
+  }
+  if (!secs.length) p.text(ML, cy + 20, 'Noch keine Einträge erfasst.', {size:10, font:'F3', color:GREY});
+
+  // Fußzeilen
+  const total = p.pages.length;
+  for (let i = 0; i < total; i++){
+    p.usePage(i);
+    p.line(ML, PH - 38, ML + CW, PH - 38, {color:'#e3e6ec', lw:.6});
+    p.text(ML, PH - 26, 'Vertraulich · Zugangsdaten' + (owner ? ' · ' + owner : ''), {size:7.5, color:'#8a93a6'});
+    const pg = `Seite ${i + 1} von ${total}`;
+    p.text(ML + CW - tw(pg, 7.5), PH - 26, pg, {size:7.5, color:'#8a93a6'});
+  }
+  return p.build('Zugangsdaten – Masterübersicht' + (owner ? ' – ' + owner : ''));
+}
+
+function downloadPdf(){
+  try {
+    const bytes = buildPdf();
+    downloadBlob(new Blob([bytes], {type:'application/pdf'}), fileStem() + '.pdf');
+    toast('PDF heruntergeladen');
+  } catch(err){ console.error(err); toast('PDF konnte nicht erzeugt werden – bitte „Drucken“ nutzen.'); }
+}
+
+/* ════════════════════════════════════════════════════════════
+   Verdrahtung
+   ════════════════════════════════════════════════════════════ */
+function renderAll(){ renderList(); renderPreview(); }
+function switchTab(t){
+  document.querySelectorAll('.tabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === t));
+  $('#tabSingle').hidden = t !== 'single'; $('#tabBulk').hidden = t !== 'bulk';
+}
+document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => switchTab(b.dataset.tab));
+
+$('#purpose').addEventListener('input', applyAnalysis);
+$('#purpose').addEventListener('keydown', e => { if (e.key === 'Enter'){ e.preventDefault(); saveForm(); } });
+$('#catChips').addEventListener('click', e => {
+  const b = e.target.closest('[data-cat]'); if (!b) return;
+  form.manual = true; form.cat = b.dataset.cat; form.sub = SUBS[form.cat][0].id;
+  if (form.cat === 'general' && form.analysis && form.analysis.cat === 'general') form.sub = form.analysis.sub;
+  if (form.analysis) Object.assign(form.values, Object.fromEntries(Object.entries(valuesFor(form.cat, form.sub, form.analysis)).filter(([k]) => !form.values[k])));
+  renderChips(); renderFields(); renderWhy();
+});
+$('#subSel').addEventListener('change', e => {
+  form.manual = true; form.sub = e.target.value;
+  if (form.analysis) Object.assign(form.values, Object.fromEntries(Object.entries(valuesFor(form.cat, form.sub, form.analysis)).filter(([k]) => !form.values[k])));
+  renderFields(); renderWhy();
+});
+$('#fields').addEventListener('input', e => { const k = e.target.dataset.key; if (k){ form.values[k] = e.target.value; delete form.auto[k]; } });
+$('#secrets').addEventListener('input', () => { form.secretsManual = true; renderSecretsPreview(); });
+$('#pwWarn').addEventListener('click', e => {
+  if (e.target.id !== 'btnStripPw') return;
+  let v = $('#purpose').value;
+  for (const f of (form.analysis ? form.analysis.flagged : [])) v = v.replace(f, '');
+  $('#purpose').value = v.replace(/\s+/g, ' ').trim(); applyAnalysis();
+});
+$('#btnAdd').onclick = saveForm;
+$('#btnCancel').onclick = () => { resetForm(); renderList(); };
+
+$('#btnAnalyze').onclick = analyzeBulk;
+$('#btnTakeAll').onclick = takeAllBulk;
+$('#bulkPreview').addEventListener('change', e => {
+  const i = +e.target.dataset.i, k = e.target.dataset.k, it = bulkItems[i]; if (!it) return;
+  if (k === 'cat'){ it.cat = e.target.value; it.sub = it.cat === it.a.cat ? it.a.sub : SUBS[it.cat][0].id; renderBulk(); }
+  else if (k === 'sub') it.sub = e.target.value;
+  else if (k === 'strip'){ it.strip = e.target.checked; it.titleEdited = false; renderBulk(); }
+});
+$('#bulkPreview').addEventListener('input', e => {
+  const i = +e.target.dataset.i; if (e.target.dataset.k === 'title' && bulkItems[i]){ bulkItems[i].title = e.target.value; bulkItems[i].titleEdited = true; }
+});
+$('#bulkPreview').addEventListener('click', e => {
+  const b = e.target.closest('[data-k="del"]'); if (!b) return;
+  bulkItems.splice(+b.dataset.i, 1); renderBulk();
+});
+
+$('#list').addEventListener('click', e => {
+  const ed = e.target.closest('[data-edit]'), del = e.target.closest('[data-del]');
+  if (ed) editEntry(ed.dataset.edit);
+  if (del){
+    const en = state.entries.find(x => x.id === del.dataset.del);
+    if (en && confirm(`„${en.title}“ löschen?`)){
+      state.entries = state.entries.filter(x => x.id !== en.id);
+      if (form.editId === en.id) resetForm();
+      persist(); renderAll();
+    }
+  }
+});
+
+$('#owner').value = state.owner;
+$('#blanks').value = String(state.settings.blanks);
+$('#newPage').checked = !!state.settings.newPage;
+$('#changed').checked = !!state.settings.changed;
+$('#owner').addEventListener('input', e => { state.owner = e.target.value; persist(); renderPreview(); });
+$('#blanks').addEventListener('change', e => { state.settings.blanks = +e.target.value; persist(); renderPreview(); });
+$('#newPage').addEventListener('change', e => { state.settings.newPage = e.target.checked; persist(); renderPreview(); });
+$('#changed').addEventListener('change', e => { state.settings.changed = e.target.checked; persist(); renderPreview(); });
+
+$('#btnPdf').onclick = downloadPdf;
+$('#btnHtml').onclick = downloadHtml;
+$('#btnPrint').onclick = () => window.print();
+
+$('#btnSave').onclick = () => {
+  downloadBlob(new Blob([JSON.stringify({app:'zugangsdaten-mappe', version:1, ...state}, null, 2)], {type:'application/json'}), fileStem() + '.json');
+  toast('Sicherung heruntergeladen (enthält keine Passwörter)');
+};
+$('#btnLoad').onclick = () => $('#fileLoad').click();
+$('#fileLoad').addEventListener('change', async e => {
+  const f = e.target.files[0]; if (!f) return;
+  try {
+    const data = JSON.parse(await f.text());
+    if (!Array.isArray(data.entries)) throw new Error('kein Eintragsfeld');
+    if (state.entries.length && !confirm('Vorhandene Einträge durch die Datei ersetzen?')) return;
+    state = normalizeState(data); persist();
+    $('#owner').value = state.owner; $('#blanks').value = String(state.settings.blanks);
+    $('#newPage').checked = !!state.settings.newPage; $('#changed').checked = !!state.settings.changed;
+    resetForm(); renderAll(); toast('Sicherung geladen');
+  } catch(err){ toast('Datei konnte nicht gelesen werden'); }
+  e.target.value = '';
+});
+$('#btnClear').onclick = () => {
+  if (!state.entries.length || !confirm('Wirklich alle Einträge in diesem Browser löschen?')) return;
+  state.entries = []; persist(); resetForm(); renderAll(); toast('Alle Einträge gelöscht');
+};
+
+const SAMPLE = [
+  'GMX max.mustermann@gmx.de', 'T-Online Mail', 'Sparkasse Girocard endet auf 4711', 'Sparkasse Online-Banking',
+  'Visa Kreditkarte', 'PayPal', 'FRITZ!Box WLAN zu Hause', 'Handy Samsung Telekom', 'Laptop Windows',
+  'ADAC Mitgliedsnr 123456789', 'Amazon', 'Netflix', 'ELSTER Steuererklärung', 'Stadtwerke Kundenportal',
+];
+$('#btnSample').onclick = () => {
+  if (state.entries.length && !confirm('Beispieldaten zu den vorhandenen Einträgen hinzufügen?')) return;
+  for (const line of SAMPLE){
+    const a = analyze(line);
+    state.entries.push({id:uid(), cat:a.cat, sub:a.sub, title:a.title || line, values:valuesFor(a.cat, a.sub, a), secrets:subOf(a.cat, a.sub).secrets.slice(), note:''});
+  }
+  if (!state.owner){ state.owner = 'Max Mustermann'; $('#owner').value = state.owner; }
+  persist(); renderAll(); toast('Beispieldaten geladen (fiktiv)');
+};
+
+resetForm();
+renderAll();
+</script>
+</body>
+</html>
