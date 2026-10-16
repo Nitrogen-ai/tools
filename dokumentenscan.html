@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dokumentenscan auf USB-Stick</title>
+<style>
+:root{
+  --accent:#7c3aed;--accent-soft:#ede9fe;--hl:#f59e0b;--hl-soft:#fef3c7;
+  --ink:#1f2937;--muted:#6b7280;--bg:#f5f3ff;--card:#ffffff;--line:#e5e7eb;
+  --panel:#1f2430;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue","Segoe UI",Roboto,Arial,sans-serif;display:flex;flex-direction:column;min-height:100vh}
+header{background:var(--accent);color:#fff;padding:12px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+header h1{font-size:1.05rem;margin:0;flex:1;min-width:200px}
+header a{color:#fff;font-size:.85rem;text-decoration:none;border:1px solid #ffffff70;border-radius:8px;padding:6px 10px;white-space:nowrap}
+header a:hover{background:#ffffff22}
+.progress{height:5px;background:#ddd6fe}
+.progress div{height:100%;background:var(--hl);transition:width .3s}
+main{flex:1;display:flex;justify-content:center;padding:20px 16px 28px}
+.slide{background:var(--card);border-radius:16px;box-shadow:0 8px 30px #4c1d9514;max-width:920px;width:100%;padding:24px;display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:center;animation:in .25s ease}
+@keyframes in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.slide.single{grid-template-columns:1fr}
+.badge{display:inline-flex;align-items:center;justify-content:center;min-width:34px;height:34px;padding:0 8px;border-radius:17px;background:var(--accent);color:#fff;font-weight:700;margin-bottom:8px}
+.slide h2{margin:0 0 10px;font-size:1.55rem;line-height:1.2}
+.slide p,.slide li{font-size:1.05rem;line-height:1.5}
+.slide ul{padding-left:20px;margin:8px 0}
+.note{background:var(--hl-soft);border-left:4px solid var(--hl);padding:8px 12px;border-radius:6px;font-size:.95rem;margin-top:12px}
+.choices{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px}
+button.go{font:inherit;font-size:1rem;font-weight:600;border:0;border-radius:10px;padding:12px 18px;cursor:pointer;background:var(--accent);color:#fff}
+button.go.alt{background:var(--accent-soft);color:var(--accent)}
+button.go:hover{filter:brightness(1.08)}
+button.go:focus-visible{outline:3px solid var(--hl);outline-offset:2px}
+.nav{display:flex;justify-content:space-between;gap:10px;max-width:920px;width:100%;margin:0 auto;padding:0 16px 20px}
+.nav button{font:inherit;border:1px solid var(--line);background:#fff;border-radius:10px;padding:8px 14px;cursor:pointer;color:var(--ink)}
+.nav button:disabled{opacity:.4;cursor:default}
+.legend{font-size:.85rem;color:var(--muted);margin-top:8px;text-align:center}
+.slide>div{min-width:0}
+svg{width:100%;height:auto;display:block}
+.pulse{animation:pulse 1.4s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.45}}
+@media (max-width:720px){.slide{grid-template-columns:1fr;padding:18px}.slide h2{font-size:1.3rem}}
+@media print{header,.nav,.progress{display:none}}
+</style>
+</head>
+<body>
+<header>
+  <h1>📄 Dokumente beidseitig auf USB-Stick scannen</h1>
+  <a href="dokumentenscan-anleitung.pdf" download>⬇ PDF-Anleitung</a>
+</header>
+<div class="progress"><div id="bar"></div></div>
+<main id="main"></main>
+<div class="nav">
+  <button id="back">← Zurück</button>
+  <button id="home">⟲ Von vorn</button>
+</div>
+
+<script>
+// ---------- Display-Mockup ----------
+const HL = '#f59e0b';
+function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;')}
+function btn(x,y,w,h,label,on){
+  return `<g ${on?'class="pulse"':''}><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="5"
+    fill="${on?'#fef3c7':'#eef0f3'}" stroke="${on?HL:'#c7cbd1'}" stroke-width="${on?4:1}"/></g>
+    <text x="${x+w/2}" y="${y+h/2+5}" text-anchor="middle" font-size="14" font-weight="${on?700:400}" fill="#1f2937">${esc(label)}</text>`;
+}
+function key(y,h,label,col,on){
+  return `<g ${on?'class="pulse"':''}><rect x="392" y="${y}" width="96" height="${h}" rx="5" fill="${on?HL:col}" stroke="${on?'#fff':'none'}" stroke-width="2"/></g>
+    <text x="440" y="${y+h/2+4}" text-anchor="middle" font-size="${label==='Start'?16:11}" font-weight="700" fill="#fff">${label}</text>`;
+}
+function screen({title='',items=[],bar=null,side=null}){
+  let s=`<svg viewBox="0 0 500 320" role="img" aria-label="Display-Skizze: ${esc(title)}">
+  <rect x="0" y="0" width="500" height="320" rx="16" fill="#1f2430"/>
+  <rect x="12" y="12" width="370" height="296" rx="6" fill="#fff"/>
+  <rect x="12" y="12" width="370" height="30" rx="6" fill="#dbe7f7"/><rect x="12" y="30" width="370" height="12" fill="#dbe7f7"/>
+  <text x="24" y="33" font-size="15" font-weight="700" fill="#1e3a8a">${esc(title)}</text>`;
+  items.forEach((it,i)=>{const c=i%2,r=Math.floor(i/2);s+=btn(26+c*178,58+r*56,164,44,it[0],it[1]);});
+  s+=`<rect x="12" y="262" width="370" height="46" fill="#e5e7eb"/>`;
+  [['Status','status',80],['Kopieren','copy',80],['Senden','send',80],['USB-Laufwerk','usb',112]].reduce((x,[l,k,w])=>{s+=btn(x,268,w,34,l,bar===k);return x+w+3},18);
+  s+=key(18,30,'Abmelden','#464646',side==='logout')+key(54,30,'Systemmenü','#464646',side==='system')
+    +key(90,30,'Zurücks.','#8a7a1e',side==='reset')+key(126,30,'Stopp','#b91c1c',side==='stop')
+    +key(176,64,'Start','#1d4ed8',side==='start');
+  return s+'</svg>';
+}
+function feeder(){
+  let sheets='';for(let i=0;i<5;i++)sheets+=`<rect x="${150+i*6}" y="${110-i*8}" width="200" height="90" fill="#fff" stroke="#9ca3af"/>`;
+  return `<svg viewBox="0 0 500 320" role="img" aria-label="Skizze Vorlageneinzug">
+  <rect width="500" height="320" rx="16" fill="#f3f4f6" stroke="#d1d5db"/>
+  <text x="24" y="36" font-size="16" font-weight="700" fill="#6b7280">Einzug oben auf dem Gerät</text>
+  <polygon points="70,250 430,250 400,150 100,150" fill="#464646"/>
+  ${sheets}
+  <text x="190" y="90" font-size="20" fill="#1f2937">Vorderseite</text><text x="190" y="116" font-size="22" font-weight="700" fill="#1f2937">OBEN ↑</text>
+  <g class="pulse"><rect x="128" y="120" width="10" height="100" fill="${HL}"/><rect x="384" y="120" width="10" height="100" fill="${HL}"/></g>
+  <text x="250" y="290" text-anchor="middle" font-size="17" font-weight="700" fill="#b45309">▶ Führungen ans Papier schieben ◀</text></svg>`;
+}
+function usbport(){
+  return `<svg viewBox="0 0 500 320" role="img" aria-label="Skizze USB-Anschluss">
+  <rect width="500" height="320" rx="16" fill="#f3f4f6" stroke="#d1d5db"/>
+  <text x="24" y="36" font-size="16" font-weight="700" fill="#6b7280">Bedienfeld, rechte Seite</text>
+  <rect x="50" y="70" width="270" height="190" rx="12" fill="#1f2430"/><rect x="64" y="84" width="200" height="162" rx="4" fill="#fff"/>
+  <g class="pulse"><rect x="318" y="145" width="12" height="40" fill="${HL}"/></g>
+  <rect x="350" y="140" width="90" height="50" rx="6" fill="#2563eb"/><text x="395" y="171" text-anchor="middle" font-size="18" font-weight="700" fill="#fff">USB</text>
+  <text x="345" y="225" font-size="30" fill="#b45309">◀</text></svg>`;
+}
+const START=['Kopieren',0],SEND=['Senden',0],BOX=['Box',0],PRG=['Programm',0];
+const home={title:'Startseite',items:[START,SEND,BOX,PRG]};
+
+// ---------- Ablauf ----------
+// Jeder Schritt: id, n (Nummer im Hauptpfad), title, html, pic, next (Standard) oder choices
+const state={many:false,color:false};
+const S={
+ start:{title:'Los geht’s',single:true,html:()=>`
+   <p>Diese Anleitung führt Sie Schritt für Schritt zu einer <b>PDF-Datei auf Ihrem USB-Stick</b>, beidseitig gescannt, aus einem Stapel loser Blätter.</p>
+   <ul><li>USB-Stick (FAT32) dabei</li><li>Konto-ID (Kopiercode) bekannt</li><li>Büro- und Heftklammern entfernt</li></ul>
+   <p class="note">Im Display ist immer <b>orange</b> markiert, wo Sie tippen oder drücken.</p>`,
+   choices:[['Ich habe alles, los!','login']]},
+ login:{n:1,title:'Anmelden',html:()=>`<p>Tippen Sie Ihre <b>Konto-ID</b> über das Ziffernfeld ein und tippen Sie dann auf <b>Login</b>.</p>`,
+   pic:()=>screen({title:'Konto-ID eingeben',items:[['• • • •',0],['',0],['Login',1],['',0]]}),next:'paper'},
+ paper:{n:2,title:'Papier einlegen',html:()=>`<p>Stapel kurz auffächern, <b>Vorderseite nach oben</b> in den Einzug oben legen und die seitlichen Führungen ans Papier schieben.</p><p><b>Wie viele Blätter haben Sie?</b></p>`,
+   pic:feeder,choices:[['Bis ca. 50 Blatt','stick',()=>state.many=false],['Mehr als 50 Blatt','many',()=>state.many=true]]},
+ many:{title:'Großer Stapel',html:()=>`<p>Legen Sie jetzt nur die <b>ersten ca. 50 Blatt</b> ein. Den Rest scannen Sie im selben Durchgang hinterher.</p><p class="note">Dafür schalten wir gleich vor dem Start den <b>Kontinuierlichen Scan</b> ein. Diese Anleitung erinnert Sie daran.</p>`,
+   pic:feeder,next:'stick'},
+ stick:{n:3,title:'USB-Stick einstecken',html:()=>`<p>Stecken Sie den Stick in den <b>USB-Anschluss rechts am Bedienfeld</b>.</p><p><b>Erscheint ein Fenster auf dem Display?</b></p>`,
+   pic:usbport,choices:[['Ja, ein Fenster mit „Datei speichern“','save'],['Nein, nichts passiert','usb']]},
+ usb:{n:4,title:'USB-Laufwerk öffnen',html:()=>`<p>Tippen Sie unten auf dem Display auf <b>USB-Laufwerk</b>.</p>`,
+   pic:()=>screen({...home,bar:'usb'}),next:'save'},
+ save:{n:5,title:'Datei speichern wählen',html:()=>`<p>Tippen Sie auf <b>Datei speichern</b>. Die Datei landet direkt auf dem Stick.</p>`,
+   pic:()=>screen({title:'USB-Laufwerk',items:[['Datei speichern',1],['Drucken',0],['Entfernen',0],['Details',0]],bar:'usb'}),next:'duplex'},
+ duplex:{n:6,title:'Beidseitig einstellen',html:()=>`<p>Tippen Sie auf <b>Duplex</b> (ggf. im Reiter <b>Original</b>) und wählen Sie <b>2-seitig</b>.</p><p>Bindung: <b>Links/Rechts</b> für normal bedruckte Blätter. Dann <b>OK</b>.</p>`,
+   pic:()=>screen({title:'Datei speichern',items:[['Duplex: 2-seitig',1],['Dateiformat',0],['Farbauswahl',0],['Auflösung',0]]}),next:'format'},
+ format:{n:7,title:'PDF und Farbe',html:()=>`<p>Prüfen Sie <b>Dateiformat = PDF</b> (sonst antippen und PDF wählen).</p><p><b>Sind Ihre Blätter farbig?</b></p>`,
+   pic:()=>screen({title:'Datei speichern',items:[['Duplex: 2-seitig',0],['Dateiformat: PDF',1],['Farbauswahl',1],['Auflösung: 300',0]]}),
+   choices:[['Nein, nur Text','color',()=>state.color=false],['Ja, mit Farbe/Bildern','color',()=>state.color=true]]},
+ color:{n:7,title:()=>state.color?'Farbe: Auto-Farbe':'Farbe: Schwarzweiß',html:()=>`<p>Tippen Sie auf <b>Farbauswahl</b> und wählen Sie <b>${state.color?'Auto-Farbe':'Schwarzweiß'}</b>.</p><p>${state.color?'Farbige Scans ergeben größere Dateien, das ist normal.':'Schwarzweiß ergibt kleine, gut lesbare Dateien.'} Auflösung <b>300 dpi</b> reicht.</p>`,
+   pic:()=>screen({title:'Farbauswahl',items:[['Auto-Farbe',state.color],['Vollfarbe',0],['Graustufen',0],['Schwarzweiß',!state.color]]}),next:()=>state.many?'cont':'go'},
+ cont:{title:'Kontinuierlichen Scan einschalten',html:()=>`<p>Weil Sie mehr als 50 Blatt haben: Reiter <b>Erweiterte Einstellung</b> öffnen, <b>Kontinuierl. Scan</b> antippen und <b>Ein</b> wählen.</p>`,
+   pic:()=>screen({title:'Erweiterte Einstellung',items:[['Dateiname',0],['Kontinuierl. Scan: Ein',1],['Leere Seite überspr.',0],['E-Mail-Bericht',0]]}),next:'go'},
+ go:{n:8,title:'Starten',html:()=>`<p>Drücken Sie rechts die blaue Taste <b>Start</b>.</p><p>Die Blätter laufen durch den Einzug. Warten Sie, bis alle durch sind.</p>`,
+   pic:()=>screen({title:'Datei speichern',items:[['Duplex: 2-seitig',0],['Dateiformat: PDF',0],['Farbauswahl',0],['Auflösung: 300',0]],side:'start'}),
+   choices:()=>state.many?[['Alle Blätter sind durch','more']]:[['Fertig, alles gescannt','remove'],['Problem: Papierstau','jam'],['Problem: Rückseiten auf dem Kopf','flip']]},
+ more:{title:'Nächster Stapel?',html:()=>`<p><b>Liegen noch Blätter bereit?</b></p><p>Wenn ja: nächsten Stapel (Vorderseite oben) einlegen und wieder <b>Start</b> drücken.<br>Wenn nein: auf dem Display <b>Scan beenden</b> tippen.</p>`,
+   pic:()=>screen({title:'Nächstes Original einlegen',items:[['Scan beenden',1],['Abbrechen',0]],side:'start'}),
+   choices:[['Nächster Stapel läuft','more'],['Letzter Stapel war durch, Scan beendet','remove'],['Problem: Papierstau','jam']]},
+ jam:{title:'Papierstau beheben',html:()=>`<ul><li><b>Stopp</b> drücken.</li><li>Den Deckel des Einzugs öffnen und das Blatt vorsichtig herausziehen.</li><li>Gestautes Blatt glätten, Stapel <b>ab diesem Blatt</b> neu einlegen, Deckel schließen.</li><li>Wieder <b>Start</b> drücken.</li></ul>`,
+   pic:()=>screen({title:'Papierstau im Einzug',items:[['Anleitung',0],['',0]],side:'stop'}),next:()=>state.many?'more':'go'},
+ flip:{title:'Rückseiten auf dem Kopf',html:()=>`<p>Dann passt die Bindung nicht zum Papier. Zurück zu <b>Duplex</b>, die Bindung umstellen (<b>Oben</b> statt <b>Links/Rechts</b> oder umgekehrt) und erneut scannen.</p><p class="note">Die fehlerhafte Datei können Sie später am Computer löschen.</p>`,
+   pic:()=>screen({title:'Duplex',items:[['1-seitig',0],['2-seitig',1],['Bindung: Links/Rechts',0],['Bindung: Oben',1]]}),choices:[['Zurück zu Duplex','duplex']]},
+ remove:{n:9,title:'Stick sicher entfernen',html:()=>`<p>Unten <b>USB-Laufwerk</b> tippen, dann <b>Entfernen</b>. Warten Sie auf die Meldung, dass der Stick entfernt werden kann, und ziehen Sie ihn erst dann ab.</p><p class="note">Ohne diesen Schritt kann die Datei beschädigt werden.</p>`,
+   pic:()=>screen({title:'USB-Laufwerk',items:[['Datei speichern',0],['Drucken',0],['Entfernen',1],['Details',0]],bar:'usb'}),next:'logout'},
+ logout:{n:10,title:'Abmelden',html:()=>`<p>Drücken Sie rechts oben <b>Authent./Abmelden</b>, damit niemand auf Ihr Konto kopiert.</p>`,
+   pic:()=>screen({...home,side:'logout'}),next:'done'},
+ done:{title:'Geschafft! 🎉',single:true,html:()=>`<p>Ihre PDF liegt auf dem USB-Stick. Am Computer finden Sie sie im obersten Ordner des Sticks, der Dateiname enthält meist <b>Datum und Uhrzeit</b>.</p>
+   <p class="note">Tipp: Die Datei ist ein Bild-PDF ohne Texterkennung. Durchsuchbar wird sie z. B. mit Adobe Acrobat oder <code>ocrmypdf</code> am Computer.</p>`,
+   choices:[['Noch einen Scan','paper'],['Von vorn','start']]},
+};
+const MAIN=10;
+const val=(v)=>typeof v==='function'?v():v;
+
+let hist=[];
+function render(id,push=true){
+  const st=S[id]||S.start; if(!S[id]) id='start';
+  if(push){ if(hist[hist.length-1]!==id) hist.push(id); }
+  const m=document.getElementById('main');
+  const n=st.n?`<span class="badge">${st.n}</span>`:(id==='start'||id==='done'?'':'<span class="badge" style="background:#f59e0b">!</span>');
+  let ch=st.choices?val(st.choices):[['Weiter →',val(st.next)]];
+  const btns=ch.map((c,i)=>`<button class="go${i>0?' alt':''}" data-i="${i}">${c[0]}</button>`).join('');
+  m.innerHTML=`<section class="slide${st.single?' single':''}">
+     <div>${n}<h2>${val(st.title)}</h2>${st.html()}<div class="choices">${btns}</div></div>
+     ${st.pic?`<div>${st.pic()}<div class="legend">Skizze, Bezeichnungen können leicht abweichen</div></div>`:''}
+   </section>`;
+  m.querySelectorAll('button.go').forEach(b=>b.onclick=()=>{const c=ch[+b.dataset.i]; if(c[2])c[2](); go(c[1]);});
+  const step=st.n||(id==='done'?MAIN:(hist.map(h=>S[h].n||0).reduce((a,b)=>Math.max(a,b),0)));
+  document.getElementById('bar').style.width=(id==='start'?0:step/MAIN*100)+'%';
+  document.getElementById('back').disabled=hist.length<2;
+  const f=m.querySelector('button.go'); if(f) f.focus({preventScroll:true});
+  document.title=(st.n?`Schritt ${st.n}: `:'')+val(st.title)+' · Dokumentenscan';
+}
+function go(id){ if(location.hash==='#'+id) render(id,false); else location.hash=id; }
+window.addEventListener('hashchange',()=>{
+  const id=location.hash.slice(1)||'start';
+  if(hist.length>1 && hist[hist.length-2]===id){ hist.pop(); render(id,false); } else render(id);
+});
+document.getElementById('back').onclick=()=>history.back();
+document.getElementById('home').onclick=()=>{hist=[];state.many=false;state.color=false;go('start'); if(!location.hash||location.hash==='#start')render('start');};
+document.addEventListener('keydown',e=>{
+  if(e.key==='ArrowLeft'&&hist.length>1) history.back();
+  if(e.key==='ArrowRight'){const b=document.querySelector('button.go'); if(b) b.click();}
+});
+render(location.hash.slice(1)||'start');
+</script>
+</body>
+</html>
