@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Arduino-Sketch hochladen</title>
+<!--
+  Arduino-Sketch-Uploader ohne Konto, ohne Installation (neutrale Fassung für nitrogen-ai.github.io/tools)
+  Funktionsgleich mit Informatik/SEK-I/Profilkurs/werkzeuge/arduino-hochladen.html, nur Gestaltung und Texte kursunabhängig.
+  1. Kompilieren: öffentlicher Wokwi-Compiler hexi.wokwi.com/build (nur der Code wird gesendet, keine Personendaten)
+  2. Hochladen: Web Serial (Chrome/Edge) + STK500v1-Protokoll des Optiboot-Bootloaders (Uno 115200 Baud, alte Nano 57600 Baud)
+  3. Serieller Monitor: 9600 Baud
+-->
+<style>
+:root{
+  --bg:#f6f7f9;--panel:#ffffff;--panel-2:#f1f3f6;--ink:#1d2330;--ink-soft:#4a5468;--dim:#7b8496;
+  --line:#dde1e8;--cyan:#0b7fab;--matrix:#1f8a4c;--red:#c2333f;--key:#00818a;--on-key:#ffffff;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;--sans:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#14171c;--panel:#1c2027;--panel-2:#232832;--ink:#e7eaf0;--ink-soft:#b3bac7;--dim:#848c9b;
+  --line:#2f3541;--cyan:#5cc4e6;--matrix:#5fd08e;--red:#f07079;--key:#3cb8c0;--on-key:#0d1114;
+}}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:var(--sans);background:var(--bg);color:var(--ink);line-height:1.55}
+.wrap{max-width:1100px;margin:0 auto;padding:1.6rem 16px 4rem}
+h1{font-size:clamp(1.4rem,4vw,2rem);font-weight:700;margin-bottom:.3rem}
+h1 span{color:var(--key)}
+.sub{color:var(--ink-soft);margin-bottom:1.4rem}
+.banner{border:1px solid var(--red);background:color-mix(in srgb,var(--red) 10%,transparent);border-radius:12px;padding:.9rem 1.1rem;margin-bottom:1.2rem;display:none}
+.banner b{color:var(--red)}
+.steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:.7rem;margin-bottom:1.2rem}
+.step{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:.8rem 1rem;font-size:.92rem;color:var(--ink-soft)}
+.step b.n{display:inline-grid;place-items:center;width:1.6rem;height:1.6rem;border-radius:50%;background:var(--key);color:var(--on-key);font-family:var(--mono);margin-right:.4rem}
+.step.done{border-color:var(--matrix)}
+.step.done b.n{background:var(--matrix)}
+.step strong{color:var(--ink)}
+.panel{background:var(--panel);box-shadow:0 1px 3px rgba(0,0,0,.05);border:1px solid var(--line);border-radius:14px;overflow:hidden;margin-bottom:1rem}
+.panel-head{display:flex;justify-content:space-between;align-items:center;gap:.6rem;flex-wrap:wrap;padding:.6rem .9rem;border-bottom:1px solid var(--line);background:var(--panel-2)}
+.panel-head h2{font-size:.95rem;font-weight:600}
+.editor{display:flex;max-height:60vh;min-height:320px;overflow:auto;font-family:var(--mono);font-size:.85rem;line-height:1.5}
+.gutter{padding:.7rem .5rem;text-align:right;color:var(--dim);user-select:none;background:var(--panel-2);min-width:3rem;white-space:pre}
+.gutter .err{color:var(--on-key);background:var(--red);border-radius:3px}
+textarea{flex:1;border:0;outline:0;resize:none;background:transparent;color:var(--ink);font:inherit;line-height:inherit;padding:.7rem .8rem;white-space:pre;overflow:hidden;tab-size:2;min-height:100%}
+textarea::placeholder{color:var(--dim)}
+.bar{display:flex;flex-wrap:wrap;gap:.6rem;padding:.9rem}
+button{font:600 1rem var(--sans);border-radius:10px;border:1px solid var(--line);background:var(--panel-2);color:var(--ink);padding:.7rem 1.1rem;cursor:pointer}
+button:hover:not(:disabled){border-color:var(--key)}
+button:disabled{opacity:.45;cursor:not-allowed}
+button.main{background:var(--key);border-color:var(--key);color:var(--on-key);font-size:1.08rem;padding:.8rem 1.4rem}
+button.small{font-size:.85rem;padding:.4rem .75rem}
+.status{padding:0 .9rem .9rem}
+.msg{border-radius:10px;padding:.75rem 1rem;font-size:.95rem;border:1px solid var(--line);background:var(--panel-2)}
+.msg.ok{border-color:var(--matrix);background:color-mix(in srgb,var(--matrix) 9%,transparent)}
+.msg.bad{border-color:var(--red);background:color-mix(in srgb,var(--red) 9%,transparent)}
+.msg.work{border-color:var(--cyan);background:color-mix(in srgb,var(--cyan) 9%,transparent)}
+.msg ul{margin:.5rem 0 0 1.2rem}
+.msg li{margin:.25rem 0}
+.msg code,.hint code{font-family:var(--mono);background:var(--panel-2);padding:0 .3rem;border-radius:4px}
+progress{width:100%;height:10px;margin-top:.6rem;accent-color:var(--matrix)}
+details.raw{margin-top:.6rem;font-size:.8rem;color:var(--dim)}
+details.raw pre{white-space:pre-wrap;font-family:var(--mono);margin-top:.4rem}
+#monitor{height:220px;overflow:auto;padding:.7rem .9rem;font-family:var(--mono);font-size:.85rem;white-space:pre-wrap;color:var(--matrix)}
+.hint{color:var(--ink-soft);font-size:.92rem}
+.help{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:1rem 1.2rem;margin-top:1rem}
+.help h2{font-size:1rem;margin-bottom:.5rem;color:var(--key)}
+.help details{border-top:1px solid var(--line);padding:.55rem 0}
+.help summary{cursor:pointer;font-weight:600}
+.help details p,.help details ul{margin:.4rem 0 0 0;color:var(--ink-soft);font-size:.93rem}
+.help details ul{padding-left:1.2rem}
+.small-print{color:var(--dim);font-size:.8rem;margin-top:1rem}
+:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Arduino-Sketch <span>hochladen</span></h1>
+  <p class="sub">Sketch einfügen, prüfen, auf den Arduino laden. Ohne Konto, ohne Installation, ohne Arduino-IDE – im Browser Chrome oder Edge.</p>
+
+  <div class="banner" id="noSerial"><b>Dieser Browser kann keinen Arduino ansprechen.</b> Öffne diese Seite bitte in <b>Google Chrome</b> oder <b>Microsoft Edge</b> auf einem Windows-, macOS-, Linux- oder ChromeOS-Rechner (nicht auf iPad/iPhone, nicht in Firefox oder Safari).</div>
+
+  <div class="steps">
+    <div class="step" id="s1"><b class="n">1</b><strong>Code einfügen</strong><br>selbst geschrieben, aus der Arduino-IDE, aus Tinkercad oder Wokwi kopiert</div>
+    <div class="step" id="s2"><b class="n">2</b><strong>Arduino anstecken</strong><br>USB-Kabel in Arduino und Rechner</div>
+    <div class="step" id="s3"><b class="n">3</b><strong>„Auf Arduino laden“</strong><br>im Fenster den Arduino wählen › Verbinden</div>
+    <div class="step" id="s4"><b class="n">4</b><strong>Ausprobieren</strong><br>Ausgaben erscheinen unten im Monitor</div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head">
+      <h2>Dein Code</h2>
+      <div style="display:flex;gap:.4rem;flex-wrap:wrap">
+        <button class="small" id="btnSave" title="Code als .ino-Datei speichern">💾 Als .ino speichern</button>
+        <button class="small" id="btnOpen" title="Eine gespeicherte .ino- oder .txt-Datei öffnen">📂 Datei öffnen</button>
+        <input type="file" id="fileIn" accept=".ino,.txt,.cpp,.c" hidden>
+      </div>
+    </div>
+    <div class="editor" id="editorBox">
+      <div class="gutter" id="gutter">1</div>
+      <textarea id="code" spellcheck="false" autocapitalize="off" autocomplete="off" placeholder="Hier den Code einfügen (Strg + V).&#10;&#10;Tipp Tinkercad: Code › oben „Blöcke“ auf „Text“ umstellen › in den Code klicken › Strg + A › Strg + C."></textarea>
+    </div>
+    <div class="bar">
+      <button class="main" id="btnUpload">⬆ Auf Arduino laden</button>
+      <button id="btnCheck">✓ Nur prüfen</button>
+      <button id="btnMonitor">🖥 Monitor verbinden</button>
+      <button id="btnTest" title="Lädt ein kleines Testprogramm: die eingebaute LED „L“ blinkt">💡 Arduino testen</button>
+    </div>
+    <div class="status"><div class="msg" id="msg">Bereit. Füge deinen Code ein und klicke auf <b>„Auf Arduino laden“</b>.</div></div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head">
+      <h2>Serieller Monitor <span class="hint">(9600 Baud, zeigt <code>Serial.println(…)</code>)</span></h2>
+      <div style="display:flex;gap:.4rem">
+        <button class="small" id="btnClear">Leeren</button>
+        <button class="small" id="btnStop" disabled>Trennen</button>
+      </div>
+    </div>
+    <div id="monitor" aria-live="polite"></div>
+  </div>
+
+  <div class="help">
+    <h2>Hilfe, es klappt nicht</h2>
+    <details><summary>Im Auswahlfenster steht kein Arduino</summary>
+      <ul>
+        <li>Steckt das USB-Kabel fest? Leuchtet auf dem Arduino die grüne <b>ON</b>-LED?</li>
+        <li>Anderen USB-Anschluss am Rechner probieren. Manche Kabel sind reine Ladekabel, dann ein anderes Kabel nehmen.</li>
+        <li>Der Arduino heißt im Fenster z. B. <b>„Arduino Uno (COM3)“</b> oder bei Nachbauten <b>„USB-SERIAL CH340 (COM4)“</b>. Beides ist richtig.</li>
+        <li>Steht gar nichts da, fehlt bei einem Nachbau evtl. der Treiber (CH340). Installiere den CH340-Treiber des Herstellers (oder frag die Person, die den Rechner betreut).</li>
+      </ul>
+    </details>
+    <details><summary>„Der Anschluss ist belegt“</summary>
+      <p>Ein anderes Fenster oder Programm benutzt den Arduino gerade (z. B. ein zweiter Tab mit dieser Seite oder die Arduino-App). Schließe es und versuche es erneut. Notfalls USB-Kabel kurz abziehen und wieder anstecken.</p>
+    </details>
+    <details><summary>„Der Arduino antwortet nicht“</summary>
+      <ul>
+        <li>Zieh alle Kabel ab, die an <b>Pin 0 und Pin 1</b> stecken. Diese Pins braucht der Arduino zum Hochladen.</li>
+        <li>USB-Kabel kurz abziehen, wieder anstecken, nochmal hochladen.</li>
+        <li>Klappt es immer noch nicht: Klicke auf „Auf Arduino laden“, und drücke im selben Moment, in dem „Verbinde …“ erscheint, einmal kurz den roten <b>RESET</b>-Knopf auf dem Arduino.</li>
+      </ul>
+    </details>
+    <details><summary>Der Code hat Fehler</summary>
+      <p>Die Seite zeigt die Zeile mit dem Fehler rot an. Häufige Ursachen: ein vergessenes <code>;</code> am Zeilenende, eine fehlende Klammer <code>}</code> oder ein Tippfehler bei Groß- und Kleinschreibung (<code>digitalwrite</code> statt <code>digitalWrite</code>). Vergleiche mit deiner Vorlage (z. B. Tinkercad oder Arduino-IDE).</p>
+    </details>
+    <details><summary>Wo ist mein Code, wenn ich die Seite schließe?</summary>
+      <p>Die Seite merkt sich deinen Code auf diesem Rechner, aber nicht sicher. Speichere ihn deshalb mit <b>„💾 Als .ino speichern“</b>.</p>
+    </details>
+    <p class="small-print">Zum Prüfen wird nur der Programmcode an den Compiler von Wokwi (wokwi.com) geschickt, keine Namen oder Konten. Das Hochladen läuft direkt vom Browser über USB auf den Arduino. Geeignet für Arduino Uno und Nano.</p>
+  </div>
+</div>
+
+<script>
+(function(){
+"use strict";
+var COMPILER = "https://hexi.wokwi.com/build";
+var STORE = "arduino-upload-code";
+var TEST_SKETCH = "void setup() {\n  pinMode(13, OUTPUT);\n  Serial.begin(9600);\n  Serial.println(\"Test: Der Arduino funktioniert!\");\n}\n\nvoid loop() {\n  digitalWrite(13, HIGH);\n  delay(300);\n  digitalWrite(13, LOW);\n  delay(300);\n}\n";
+
+var $ = function(id){ return document.getElementById(id); };
+var code = $("code"), gutter = $("gutter"), msgEl = $("msg"), mon = $("monitor");
+var hasSerial = "serial" in navigator;
+if (!hasSerial) $("noSerial").style.display = "block";
+
+// ---------------------------------------------------------------- Editor
+var errLines = {};
+function renderGutter(){
+  var n = code.value.split("\n").length, out = [];
+  for (var i = 1; i <= n; i++) out.push(errLines[i] ? '<span class="err">' + i + '</span>' : String(i));
+  gutter.innerHTML = out.join("\n");
+  code.style.height = "auto";
+  code.style.height = code.scrollHeight + "px";
+}
+code.addEventListener("input", function(){
+  errLines = {};
+  renderGutter();
+  try { localStorage.setItem(STORE, code.value); } catch (e) {}
+  $("s1").classList.toggle("done", code.value.trim().length > 0);
+});
+code.addEventListener("keydown", function(e){
+  if (e.key === "Tab") {
+    e.preventDefault();
+    var s = code.selectionStart;
+    code.setRangeText("  ", s, code.selectionEnd, "end");
+    code.dispatchEvent(new Event("input"));
+  }
+});
+try { var saved = localStorage.getItem(STORE); if (saved) code.value = saved; } catch (e) {}
+renderGutter();
+$("s1").classList.toggle("done", code.value.trim().length > 0);
+
+$("btnSave").onclick = function(){
+  var name = prompt("Dateiname:", "mein-sketch");
+  if (name === null) return;
+  name = (name.trim() || "mein-sketch").replace(/[\\/:*?"<>|]/g, "-");
+  if (!/\.ino$/i.test(name)) name += ".ino";
+  var a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([code.value], {type: "text/plain"}));
+  a.download = name;
+  a.click();
+  setTimeout(function(){ URL.revokeObjectURL(a.href); }, 2000);
+};
+$("btnOpen").onclick = function(){ $("fileIn").click(); };
+$("fileIn").onchange = function(){
+  var f = this.files[0]; if (!f) return;
+  f.text().then(function(t){ code.value = t; code.dispatchEvent(new Event("input")); });
+  this.value = "";
+};
+
+// ---------------------------------------------------------------- Meldungen
+function esc(s){ return String(s).replace(/[&<>"]/g, function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]; }); }
+function say(kind, html){ msgEl.className = "msg " + (kind || ""); msgEl.innerHTML = html; }
+function busy(on){
+  ["btnUpload","btnCheck","btnTest","btnMonitor"].forEach(function(id){ $(id).disabled = on || (!hasSerial && id !== "btnCheck"); });
+}
+busy(false);
+
+// ---------------------------------------------------------------- Kompilieren
+// Typografische Zeichen (z. B. aus Word oder dem Arbeitsblatt kopiert) automatisch ersetzen
+function cleanCode(src){
+  var fixed = src.replace(/[\u201C\u201D\u201E\u00AB\u00BB]/g, '"').replace(/[\u2018\u2019\u201A]/g, "'")
+                 .replace(/[\u2212\u2013]/g, "-").replace(/\u00A0/g, " ");
+  return {code: fixed, changed: fixed !== src};
+}
+
+function explain(line){
+  var m;
+  if (/stray '\\(342|302|303)'/.test(line)) return "Hier steht ein Sonderzeichen, das C++ nicht kennt (z. B. ä, ö, ü, ß, · oder „ “). Erlaubt sind Umlaute nur in Kommentaren <code>//</code> oder zwischen Anführungszeichen.";
+  if (/stray/.test(line)) return "Hier steht ein ungültiges Zeichen. Lösche es und tippe es neu.";
+  if ((m = line.match(/'([^']+)' was not declared in this scope/))) return "<code>" + esc(m[1]) + "</code> ist unbekannt. Tippfehler? Groß- und Kleinschreibung beachten! Variablen müssen oben im Programm angelegt werden (z. B. <code>int " + esc(m[1]) + " = 0;</code>).";
+  if ((m = line.match(/expected '([;,)}\]])'/)) ) {
+    var w = {";":"ein Semikolon <code>;</code> (meist am Ende der Zeile davor)", ")":"eine schließende Klammer <code>)</code>", "}":"eine schließende geschweifte Klammer <code>}</code>", ",":"ein Komma <code>,</code> oder Semikolon <code>;</code> (meist am Ende der Zeile davor)", "]":"eine Klammer <code>]</code>"}[m[1]];
+    return "Hier fehlt vermutlich " + w + ".";
+  }
+  if (/expected '\(' /.test(line)) return "Hier fehlt eine öffnende Klammer <code>(</code>.";
+  if (/expected primary-expression|expected unqualified-id/.test(line)) return "C++ versteht diese Stelle nicht. Prüfe Klammern, Semikolons und Rechenzeichen in dieser Zeile und der Zeile davor.";
+  if (/redefinition of/.test(line)) return "Das gibt es doppelt (z. B. zweimal <code>void setup()</code> oder dieselbe Variable zweimal angelegt). Lösche eines davon.";
+  if (/No such file or directory/.test(line)) return "Diese Bibliothek (<code>#include</code>) kennt der Online-Compiler nicht. Verfügbar sind die gängigen Arduino-Bibliotheken.";
+  if (/undefined reference to `(setup|loop)/.test(line)) return "<code>void setup()</code> oder <code>void loop()</code> fehlt. Beide müssen im Programm stehen.";
+  if (/lvalue required|assignment of read-only/.test(line)) return "Hier wird etwas verändert, das man nicht verändern kann. Meintest du <code>==</code> (vergleichen) statt <code>=</code> (zuweisen)?";
+  return null;
+}
+
+function parseErrors(stderr){
+  var out = [], seen = {}, lines = stderr.split("\n");
+  for (var i = 0; i < lines.length; i++) {
+    var m = lines[i].match(/sketch\.ino:(\d+):(\d+):\s*(error|fatal error):\s*(.*)$/);
+    if (!m) { var u = lines[i].match(/undefined reference to `(setup|loop)/); if (u) out.push({line: 0, text: lines[i], de: explain(lines[i])}); continue; }
+    var ln = +m[1], de = explain(m[4]);
+    var key = ln + "|" + (de || m[4]);
+    if (seen[key]) continue;
+    seen[key] = 1;
+    var sugg = (lines[i + 3] || "").match(/suggested alternative: '([^']+)'/) || (lines[i + 3] || "").match(/did you mean '([^']+)'/) || m[4].match(/did you mean '([^']+)'/);
+    if (sugg && de) de += " Vorschlag: <code>" + esc(sugg[1]) + "</code>";
+    out.push({line: ln, text: m[4], de: de});
+  }
+  return out;
+}
+
+function compile(src){
+  return fetch(COMPILER, {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({sketch: src, board: "uno"})})
+    .then(function(r){ if (!r.ok) throw new Error("Compiler antwortet mit " + r.status); return r.json(); })
+    .catch(function(e){
+      if (e instanceof TypeError) throw new Error("Keine Verbindung zum Compiler. Ist der Rechner mit dem Internet verbunden?");
+      throw e;
+    });
+}
+
+// Prüft den Code; liefert die Hex-Datei oder null (Fehler werden angezeigt)
+function checkCode(src, label){
+  var c = cleanCode(src);
+  if (c.changed && src === code.value) { code.value = c.code; code.dispatchEvent(new Event("input")); }
+  if (!c.code.trim()) { say("bad", "Das Code-Feld ist leer. Füge zuerst deinen Code ein."); return Promise.resolve(null); }
+  say("work", "⏳ " + label + " … (dauert ein paar Sekunden)");
+  return compile(c.code).then(function(res){
+    if (res.hex) {
+      errLines = {}; renderGutter();
+      return {hex: res.hex, fixed: c.changed, info: (res.stdout || "").match(/uses (\d+) bytes \((\d+)%\)/)};
+    }
+    var errs = parseErrors(res.stderr || "");
+    errLines = {}; errs.forEach(function(e){ if (e.line) errLines[e.line] = 1; }); renderGutter();
+    var items = errs.slice(0, 6).map(function(e){
+      return "<li>" + (e.line ? "<b>Zeile " + e.line + ":</b> " : "") + (e.de || esc(e.text)) + "</li>";
+    }).join("");
+    if (!items) items = "<li>Unbekannter Fehler, siehe Details.</li>";
+    var firstLine = errs.filter(function(e){ return e.line; })[0];
+    if (firstLine) jumpTo(firstLine.line);
+    say("bad", "<b>❌ Der Code hat " + (errs.length === 1 ? "einen Fehler" : errs.length + " Fehler") + ".</b> Die Zeilennummern sind links rot markiert. Korrigiere am besten zuerst den obersten Fehler." +
+      "<ul>" + items + "</ul>" +
+      '<details class="raw"><summary>Originalmeldung des Compilers (englisch)</summary><pre>' + esc(res.stderr || "") + "</pre></details>");
+    return null;
+  });
+}
+
+function jumpTo(line){
+  var lines = code.value.split("\n"), pos = 0;
+  for (var i = 0; i < line - 1 && i < lines.length; i++) pos += lines[i].length + 1;
+  code.focus();
+  code.setSelectionRange(pos, pos + (lines[line - 1] || "").length);
+  var box = $("editorBox"), lh = parseFloat(getComputedStyle(code).lineHeight) || 20;
+  box.scrollTop = Math.max(0, (line - 4) * lh);
+}
+
+$("btnCheck").onclick = function(){
+  busy(true);
+  checkCode(code.value, "Ich prüfe deinen Code").then(function(r){
+    if (r) say("ok", "<b>✅ Der Code ist fehlerfrei.</b>" + (r.fixed ? " (Typografische Anführungszeichen habe ich automatisch ersetzt.)" : "") + " Jetzt kannst du ihn auf den Arduino laden.");
+  }).catch(function(e){ say("bad", "❌ " + esc(e.message)); }).then(function(){ busy(false); });
+};
+
+// ---------------------------------------------------------------- Intel-HEX
+function parseHex(txt){
+  var mem = new Uint8Array(32768).fill(0xFF), max = 0, base = 0;
+  txt.split(/\r?\n/).forEach(function(l){
+    l = l.trim(); if (l.charAt(0) !== ":") return;
+    var b = [];
+    for (var i = 1; i + 1 < l.length; i += 2) b.push(parseInt(l.substr(i, 2), 16));
+    var n = b[0], addr = (b[1] << 8) | b[2], type = b[3];
+    if (type === 0) {
+      for (var k = 0; k < n; k++) { var a = base + addr + k; if (a < mem.length) { mem[a] = b[4 + k]; if (a + 1 > max) max = a + 1; } }
+    } else if (type === 2) base = ((b[4] << 8) | b[5]) << 4;
+    else if (type === 4) base = ((b[4] << 8) | b[5]) << 16;
+  });
+  return mem.slice(0, Math.ceil(max / 128) * 128);
+}
+
+// ---------------------------------------------------------------- Web Serial
+var port = null, reader = null, readLoop = null, rx = [], mode = "idle";
+var sleep = function(ms){ return new Promise(function(r){ setTimeout(r, ms); }); };
+var decoder = new TextDecoder();
+
+function startReading(){
+  reader = port.readable.getReader();
+  readLoop = (async function(){
+    try {
+      while (true) {
+        var r = await reader.read();
+        if (r.done) break;
+        if (!r.value) continue;
+        if (mode === "monitor") monitorWrite(decoder.decode(r.value, {stream: true}));
+        else for (var i = 0; i < r.value.length; i++) rx.push(r.value[i]);
+      }
+    } catch (e) {
+      if (mode === "monitor") { monitorWrite("\n[Verbindung getrennt]\n"); setMonitorUi(false); mode = "idle"; }
+    } finally {
+      try { reader.releaseLock(); } catch (e) {}
+    }
+  })();
+}
+async function openPort(baud){
+  await port.open({baudRate: baud, bufferSize: 4096});
+  startReading();
+}
+async function closePort(){
+  if (!port) return;
+  if (reader) { try { await reader.cancel(); } catch (e) {} try { await readLoop; } catch (e) {} reader = null; }
+  try { await port.close(); } catch (e) {}
+}
+async function send(bytes){
+  var w = port.writable.getWriter();
+  try { await w.write(new Uint8Array(bytes)); } finally { w.releaseLock(); }
+}
+async function recv(n, timeout){
+  var t0 = Date.now();
+  while (rx.length < n) {
+    if (Date.now() - t0 > timeout) throw new Error("timeout");
+    await sleep(1);
+  }
+  return rx.splice(0, n);
+}
+
+// Gerät auswählen: bekannte Arduinos und Nachbauten zuerst, Wahl wird gemerkt
+async function choosePort(){
+  if (port) return port;
+  var known = await navigator.serial.getPorts();
+  if (known.length === 1) { port = known[0]; return port; }
+  port = await navigator.serial.requestPort({});
+  return port;
+}
+
+// ---------------------------------------------------------------- STK500v1 (Optiboot)
+var STK_OK = 0x10, STK_INSYNC = 0x14, EOP = 0x20;
+async function stk(cmd, respLen, timeout){
+  await send(cmd.concat([EOP]));
+  var a = await recv(1, timeout || 400);
+  if (a[0] !== STK_INSYNC) throw new Error("nosync");
+  var data = respLen ? await recv(respLen, timeout || 400) : [];
+  var b = await recv(1, timeout || 400);
+  if (b[0] !== STK_OK) throw new Error("nook");
+  return data;
+}
+async function resetBoard(){
+  await port.setSignals({dataTerminalReady: false, requestToSend: false});
+  await sleep(120);
+  await port.setSignals({dataTerminalReady: true, requestToSend: true});
+  await sleep(50);
+}
+// Nach dem Reset blinkt Optiboot erst die LED „L“ (ca. 0,3 s). Anfragen in dieser Zeit stauen sich
+// im UART und bringen den Bootloader aus dem Takt (er springt dann ins alte Programm). Deshalb erst
+// warten, dann synchronisieren und die Synchronisation mit einer zweiten Anfrage bestätigen.
+async function syncOnce(timeout){
+  rx.length = 0;
+  await send([0x30, EOP]);
+  try { var r = await recv(2, timeout); return r[0] === STK_INSYNC && r[1] === STK_OK; }
+  catch (e) { return false; }
+}
+async function sync(){
+  var waits = [350, 200, 550];
+  for (var attempt = 0; attempt < waits.length; attempt++) {
+    await resetBoard();
+    await sleep(waits[attempt]);
+    for (var i = 0; i < 6; i++) {
+      if (await syncOnce(200)) {
+        await sleep(30);
+        if (await syncOnce(300)) { rx.length = 0; return true; }
+        break;                                        // aus dem Takt: neu zurücksetzen
+      }
+    }
+  }
+  return false;
+}
+async function flash(image, progress){
+  mode = "flash";
+  var ok = false;
+  for (var baud of [115200, 57600]) {      // Uno/neue Nano: 115200, alte Nano-Bootloader: 57600
+    await openPort(baud);
+    progress("connect", baud);
+    if (await sync()) { ok = true; break; }
+    await closePort();
+  }
+  if (!ok) throw new Error("NOSYNC");
+  var pages = image.length / 128, step = 0, total = pages * 2;
+  await stk([0x50]);                                  // Programmiermodus an
+  for (var p = 0; p < pages; p++) {
+    var addr = p * 128;
+    await stk([0x55, (addr >> 1) & 0xFF, (addr >> 9) & 0xFF]);
+    await stk([0x64, 0x00, 0x80, 0x46].concat(Array.from(image.subarray(addr, addr + 128))), 0, 1000);
+    progress("write", ++step / total);
+  }
+  for (var q = 0; q < pages; q++) {                   // Kontrolle: zurücklesen und vergleichen
+    var a2 = q * 128;
+    await stk([0x55, (a2 >> 1) & 0xFF, (a2 >> 9) & 0xFF]);
+    var back = await stk([0x74, 0x00, 0x80, 0x46], 128, 1000);
+    for (var k = 0; k < 128; k++) if (back[k] !== image[a2 + k]) throw new Error("VERIFY");
+    progress("verify", ++step / total);
+  }
+  await stk([0x51]);                                  // Programmiermodus aus, Sketch startet
+  await closePort();
+  mode = "idle";
+}
+
+// ---------------------------------------------------------------- Ablauf Hochladen
+async function upload(src, label){
+  if (!hasSerial) return;
+  busy(true);
+  try {
+    if (mode === "monitor") await stopMonitor();
+    var r = await checkCode(src, label);
+    if (!r) return;
+    say("work", "🔌 Wähle im Fenster oben deinen Arduino aus (z. B. „Arduino Uno (COM3)“ oder „USB-SERIAL CH340“) und klicke auf <b>Verbinden</b>.");
+    try { await choosePort(); }
+    catch (e) { say("bad", "Du hast keinen Arduino ausgewählt. Ist er angesteckt? Dann nochmal auf <b>„Auf Arduino laden“</b> klicken."); return; }
+    $("s2").classList.add("done");
+    var image = parseHex(r.hex);
+    await flash(image, function(phase, v){
+      if (phase === "connect") say("work", "⏳ Verbinde mit dem Arduino …");
+      else say("work", "⏳ " + (phase === "write" ? "Lade auf den Arduino" : "Kontrolliere") + " … " + Math.round(v * 100) + " %<progress max='1' value='" + v + "'></progress>");
+    });
+    $("s3").classList.add("done");
+    say("ok", "<b>✅ Fertig! Dein Programm läuft jetzt auf dem Arduino.</b>" + (r.fixed ? " (Typografische Anführungszeichen habe ich automatisch ersetzt.)" : "") +
+      " Der Monitor unten zeigt, was der Arduino mit <code>Serial.println</code> ausgibt.");
+    await startMonitor(true);
+    $("s4").classList.add("done");
+  } catch (e) {
+    mode = "idle";
+    try { await closePort(); } catch (x) {}
+    var t = String(e && e.message || e);
+    if (/NOSYNC|timeout|nosync|nook/.test(t))
+      say("bad", "<b>❌ Der Arduino antwortet nicht.</b><ul><li>Kabel an <b>Pin 0 und 1</b> abziehen.</li><li>USB-Kabel kurz ab- und wieder anstecken, dann nochmal versuchen.</li><li>Hilft das nicht: beim nächsten Versuch, sobald „Verbinde …“ erscheint, kurz den <b>RESET</b>-Knopf am Arduino drücken.</li></ul>");
+    else if (/VERIFY/.test(t))
+      say("bad", "<b>❌ Beim Kontrollieren stimmte etwas nicht.</b> Bitte einfach nochmal hochladen.");
+    else if (/already open|Failed to open|NetworkError|InvalidStateError/i.test(t))
+      say("bad", "<b>❌ Der Anschluss ist belegt.</b> Schließe andere Tabs mit dieser Seite oder die Arduino-App. Notfalls USB-Kabel ab- und wieder anstecken.");
+    else if (/device has been lost|disconnected/i.test(t))
+      { port = null; say("bad", "<b>❌ Die Verbindung ist abgebrochen.</b> Steckt das USB-Kabel fest? Nochmal versuchen."); }
+    else say("bad", "❌ " + esc(t));
+  } finally { busy(false); }
+}
+$("btnUpload").onclick = function(){ upload(code.value, "Ich prüfe deinen Code"); };
+$("btnTest").onclick = function(){ upload(TEST_SKETCH, "Ich bereite das Testprogramm vor"); };
+
+// ---------------------------------------------------------------- Serieller Monitor
+var monBuf = "";
+function monitorWrite(t){
+  monBuf += t;
+  if (monBuf.length > 20000) monBuf = monBuf.slice(-15000);
+  var atBottom = mon.scrollTop + mon.clientHeight >= mon.scrollHeight - 30;
+  mon.textContent = monBuf;
+  if (atBottom) mon.scrollTop = mon.scrollHeight;
+}
+function setMonitorUi(on){ $("btnStop").disabled = !on; $("btnMonitor").textContent = on ? "🖥 Monitor läuft" : "🖥 Monitor verbinden"; }
+async function startMonitor(silent){
+  if (mode === "monitor") return;
+  await choosePort();
+  rx.length = 0;
+  mode = "monitor";
+  await openPort(9600);
+  try { await resetBoard(); } catch (e) {}           // Neustart, damit auch Ausgaben aus setup() erscheinen
+  setMonitorUi(true);
+  if (!silent) say("ok", "🖥 Monitor verbunden. Der Arduino startet neu und schickt seine Ausgaben hierher.");
+}
+async function stopMonitor(){
+  mode = "idle";
+  await closePort();
+  setMonitorUi(false);
+}
+$("btnMonitor").onclick = async function(){
+  if (!hasSerial || mode === "monitor") return;
+  try { await startMonitor(false); }
+  catch (e) { mode = "idle"; setMonitorUi(false); try { await closePort(); } catch (x) {} if (/No port selected/i.test(e.message)) say("", "Kein Arduino ausgewählt."); else say("bad", "<b>❌ Monitor konnte nicht verbinden.</b> Ist der Anschluss belegt (anderer Tab)? USB-Kabel ab- und wieder anstecken."); }
+};
+$("btnStop").onclick = function(){ stopMonitor(); };
+$("btnClear").onclick = function(){ monBuf = ""; mon.textContent = ""; };
+
+if (hasSerial) navigator.serial.addEventListener("disconnect", function(e){
+  if (e.target === port) { port = null; if (mode === "monitor") { mode = "idle"; setMonitorUi(false); monitorWrite("\n[Arduino abgezogen]\n"); } }
+});
+})();
+</script>
+</body>
+</html>

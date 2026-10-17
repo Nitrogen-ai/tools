@@ -36,6 +36,14 @@
   Diff-Modus) nicht abdeckt. Bei Änderungen am Quelltool auch dieses Zip neu
   bauen und ersetzen.
 
+## Ausnahme: arduino-upload.html
+- Neutrale, kursunabhängige Fassung von `Informatik/SEK-I/Profilkurs/werkzeuge/
+  arduino-hochladen.html` (helles Design, Systemschriften, Texte ohne
+  Profilkurs-/Classroom-Bezug). Braucht zur Laufzeit den öffentlichen
+  Wokwi-Compiler (hexi.wokwi.com/build, nur der Code wird gesendet) — bewusste
+  Ausnahme von „keine Laufzeit-Netzwerkzugriffe“. Logik-Fixes im Profilkurs-
+  Original auch hier nachziehen (JS-Teil ist identisch).
+
 ## Konventionen
 - Jedes Werkzeug ist eine einzelne, offline lauffähige HTML-Datei — keine
   CDN-Abhängigkeiten, kein Server, keine Laufzeit-Netzwerkzugriffe.
