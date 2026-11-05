@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KI-Stundenvorbereitung mit Handreichung</title>
+<style>
+  :root {
+    --a: #6d5dfc; --b: #9b4dca; --ink: #1f2340; --soft: #5f6688; --line: #e4e6f2; --tint: #f4f4fb;
+    --ok: #17845f; --warn: #b4540a; --term: #15171f; --term2: #232633; --chip: #ffe9a8; --chipink: #5a4300;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; }
+  body { font-family: -apple-system, "Segoe UI", Arial, sans-serif; color: var(--ink); background: linear-gradient(135deg, #5b6cf0, #8b4fc4); padding: 12px; }
+  button { font: inherit; color: inherit; }
+  a { color: var(--a); }
+  .shell { max-width: 1400px; height: calc(100dvh - 24px); margin: 0 auto; background: #fff; border-radius: 18px; box-shadow: 0 20px 40px rgba(0,0,0,.18); display: flex; flex-direction: column; overflow: hidden; }
+
+  header { display: flex; align-items: center; gap: 14px; padding: 12px 18px; border-bottom: 1px solid var(--line); flex: none; }
+  header .logo { font-weight: 800; font-size: 1.05rem; white-space: nowrap; }
+  header .logo span { color: var(--a); }
+  .steps { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; flex: 1; justify-content: flex-end; }
+  .steps::-webkit-scrollbar { display: none; }
+  .steps button { flex: none; border: 0; background: var(--tint); color: var(--soft); border-radius: 999px; padding: 7px 12px; font-size: .86rem; font-weight: 700; cursor: pointer; }
+  .steps button.on { background: linear-gradient(45deg, var(--a), var(--b)); color: #fff; }
+  .steps button.done { color: var(--a); }
+
+  main { flex: 1; min-height: 0; overflow-y: auto; padding: 22px 30px; }
+  .page { display: none; height: 100%; }
+  .page.on { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: 32px; align-items: center; }
+  .page.wide.on { grid-template-columns: 1fr; align-content: center; }
+  .kicker { display: inline-block; background: linear-gradient(45deg, var(--a), var(--b)); color: #fff; border-radius: 999px; padding: 4px 13px; font-weight: 700; font-size: .85rem; }
+  h1 { font-size: clamp(1.6rem, 3.4vw, 2.5rem); line-height: 1.12; margin: 10px 0 10px; }
+  h2 { font-size: 1.15rem; margin: 18px 0 6px; }
+  p.lead { font-size: 1.15rem; line-height: 1.5; color: var(--soft); }
+  ul.points { margin: 14px 0 0 0; list-style: none; display: grid; gap: 9px; }
+  ul.points li { position: relative; padding-left: 28px; line-height: 1.4; font-size: 1.02rem; }
+  ul.points li::before { content: "→"; position: absolute; left: 4px; color: var(--a); font-weight: 800; }
+  .hint { margin-top: 16px; background: #fff7e6; border-left: 4px solid #f0a020; border-radius: 8px; padding: 10px 14px; font-size: .95rem; line-height: 1.4; }
+  .hint.ok { background: #e8f7f0; border-left-color: var(--ok); }
+
+  /* Flow on start page */
+  .flow { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 22px; }
+  .flow div { background: var(--tint); border-radius: 12px; padding: 12px; text-align: center; font-weight: 700; font-size: .95rem; line-height: 1.3; }
+  .flow div b { display: block; font-size: 1.8rem; margin-bottom: 4px; }
+  .big3 { display: grid; gap: 12px; }
+  .big3 div { display: grid; grid-template-columns: 54px 1fr; gap: 12px; align-items: center; background: var(--tint); border-radius: 14px; padding: 14px 16px; }
+  .big3 .n { width: 54px; height: 54px; border-radius: 50%; background: linear-gradient(45deg, var(--a), var(--b)); color: #fff; font-weight: 800; font-size: 1.4rem; display: grid; place-items: center; }
+  .big3 code { font-family: ui-monospace, Menlo, monospace; font-size: .92rem; color: var(--ink); }
+  .big3 small { display: block; color: var(--soft); margin-top: 3px; }
+
+  /* Files */
+  .files { display: grid; gap: 7px; }
+  .file { display: grid; grid-template-columns: 34px 1fr; gap: 10px; align-items: center; background: #fff; border: 1.5px solid var(--line); border-radius: 10px; padding: 8px 12px; cursor: grab; user-select: none; }
+  .file:hover { border-color: var(--a); }
+  .file .ic { font-size: 1.4rem; text-align: center; }
+  .file b { display: block; font-size: .95rem; }
+  .file span { font-size: .84rem; color: var(--soft); }
+  .files.compact { margin-top: 14px; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .files.compact .file { padding: 5px 8px; grid-template-columns: 24px 1fr; }
+  .files.compact .file span span { display: none; }
+  .files.compact .file b { font-size: .8rem; font-weight: 600; }
+  .files.compact .ic { font-size: 1rem; }
+  .file.used { opacity: .45; border-style: dashed; }
+
+  /* Terminal */
+  .term { background: var(--term); color: #e6e7ee; border-radius: 14px; box-shadow: 0 14px 30px rgba(0,0,0,.25); overflow: hidden; display: flex; flex-direction: column; min-height: 0; max-height: 100%; }
+  .term .bar { background: var(--term2); padding: 9px 12px; display: flex; gap: 7px; align-items: center; font-size: .8rem; color: #9aa0b8; flex: none; }
+  .term .bar i { width: 11px; height: 11px; border-radius: 50%; display: inline-block; }
+  .term .body { padding: 16px 18px; font-family: ui-monospace, Menlo, monospace; font-size: .92rem; line-height: 1.6; overflow-y: auto; min-height: 220px; }
+  .term .body.drop { outline: 3px dashed #ffd76a; outline-offset: -8px; }
+  .term .pr { color: #8ab4ff; }
+  .term .chip { background: var(--chip); color: var(--chipink); border-radius: 5px; padding: 1px 6px; font-weight: 700; white-space: nowrap; }
+  .term .slot { border: 1.5px dashed #6b7090; color: #8a90ad; border-radius: 5px; padding: 0 6px; white-space: nowrap; cursor: pointer; }
+  .term .slot.next { border-color: #ffd76a; color: #ffd76a; animation: pulse 1.2s infinite; }
+  @keyframes pulse { 50% { opacity: .45; } }
+  .term .out { color: #a6e3a1; }
+  .term .dim { color: #7c829e; }
+  .term .warnline { color: #f9c56b; }
+  .term .cursor { display: inline-block; width: .55em; height: 1.1em; background: #e6e7ee; vertical-align: -2px; animation: blink 1s steps(1) infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+  .controls { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+  .btn { border: 0; background: linear-gradient(45deg, var(--a), var(--b)); color: #fff; border-radius: 10px; padding: 10px 16px; font-weight: 700; cursor: pointer; text-decoration: none; display: inline-block; }
+  .btn.ghost { background: #fff; color: var(--a); border: 2px solid var(--a); }
+
+  /* Product cards */
+  .cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  .card { background: var(--tint); border-radius: 14px; padding: 14px 16px; }
+  .card h3 { font-size: 1.05rem; margin-bottom: 5px; }
+  .card p { font-size: .93rem; line-height: 1.4; color: var(--soft); }
+  .card .tag { font-size: .75rem; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; color: var(--b); }
+  .check { list-style: none; display: grid; gap: 8px; margin-top: 8px; }
+  .check li { background: #fff; border: 1.5px solid var(--line); border-radius: 10px; padding: 9px 12px; cursor: pointer; line-height: 1.35; font-size: .97rem; display: grid; grid-template-columns: 26px 1fr; gap: 6px; }
+  .check li::before { content: "☐"; font-size: 1.15rem; line-height: 1.1; color: var(--soft); }
+  .check li.on { border-color: var(--ok); background: #f0faf5; }
+  .check li.on::before { content: "☑"; color: var(--ok); }
+  .mini { display: grid; gap: 8px; counter-reset: s; }
+  .mini div { counter-increment: s; background: var(--tint); border-radius: 10px; padding: 9px 12px 9px 44px; position: relative; line-height: 1.35; }
+  .mini div::before { content: counter(s); position: absolute; left: 10px; top: 8px; width: 24px; height: 24px; border-radius: 50%; background: var(--a); color: #fff; font-weight: 800; font-size: .85rem; display: grid; place-items: center; }
+
+  footer { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 9px 16px; border-top: 1px solid var(--line); flex: none; }
+  footer button { border: 0; background: var(--tint); border-radius: 10px; padding: 9px 18px; font-weight: 700; cursor: pointer; }
+  footer button:disabled { opacity: .35; cursor: default; }
+  #pos { color: var(--soft); font-size: .9rem; }
+
+  @media (max-width: 900px) {
+    .page.on { grid-template-columns: 1fr; align-items: start; }
+    main { padding: 16px; }
+    .flow, .cards { grid-template-columns: 1fr 1fr; }
+    header .logo { display: none; }
+    .steps { justify-content: flex-start; }
+  }
+  @media (max-width: 560px) {
+    body { padding: 0; }
+    .shell { height: 100dvh; border-radius: 0; }
+    .cards { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="shell">
+  <header>
+    <div class="logo">KI-Stunden&shy;vorbereitung <span>mit Handreichung</span></div>
+    <nav class="steps" id="steps"></nav>
+  </header>
+  <main id="main">
+
+    <!-- 0 Überblick -->
+    <section class="page" data-nav="Überblick">
+      <div>
+        <p class="kicker">Best Practice · Englisch Klasse 9 · Unit 2</p>
+        <h1>Von der Handreichung zum Schülerlink – mit drei Prompts</h1>
+        <p class="lead">Beispiel einer echten Stunde: <i>Understanding a newspaper article</i> + <i>India timeline</i>. Die KI (Claude Code im Terminal) liest Handreichung, Schulbuchseiten und Quiz-Screenshots und baut daraus das komplette Stundenmaterial.</p>
+        <div class="flow">
+          <div><b>📂</b>Material sammeln</div>
+          <div><b>💬</b>Prompt + Dateien hineinziehen</div>
+          <div><b>🔍</b>Ergebnis prüfen</div>
+          <div><b>🔗</b>Link an die Klasse</div>
+        </div>
+        <div class="hint ok"><b>Zeitaufwand der Lehrperson:</b> ca. 5 Minuten Prompts + 15 Minuten Prüfen. Die KI arbeitet dazwischen selbstständig.</div>
+      </div>
+      <div class="big3">
+        <div><span class="n">1</span><p><b>„Erstelle das Material wie in dieser Vorlage …“</b><small>+ Handreichung, Schulbuchseiten, Quiz-Screenshots per Drag &amp; Drop</small></p></div>
+        <div><span class="n">2</span><p><b>„Please commit and push …“</b><small>→ Seite ist über GitHub Pages online</small></p></div>
+        <div><span class="n">3</span><p><b>„Please integrate the quiz link …“</b><small>→ Google-Formular als Self-Check mit Button + QR-Code verknüpft</small></p></div>
+      </div>
+    </section>
+
+    <!-- 1 Material -->
+    <section class="page" data-nav="1 Material">
+      <div>
+        <p class="kicker">Schritt 1 · Material sammeln</p>
+        <h1>Ein Ordner mit allem, was Sie sowieso haben</h1>
+        <p class="lead">Nichts wird abgetippt. Die KI liest PDFs, Bilder und HTML-Dateien selbst.</p>
+        <ul class="points">
+          <li><b>Handreichung</b> (Lehrerband): liefert Lösungen, Wortschatz und Stundenverlauf – die fachliche Grundlage.</li>
+          <li><b>Vorlage</b> einer früheren Stunde: zeigt das gewünschte Format („mach es wie hier“).</li>
+          <li><b>Screenshots</b> des Digital-Quiz und der Schülerbuchseiten: daraus werden Plickers-Fragen und der Abgleich mit der Schüleransicht.</li>
+        </ul>
+        <div class="hint">Beim Präsentieren: den <b>Demo-Ordner</b> im Finder neben dem Terminal öffnen. Die Nummern tauchen im Prompt als gelbe Platzhalter wieder auf.</div>
+      </div>
+      <div class="files" id="files"></div>
+    </section>
+
+    <!-- 2 Prompt -->
+    <section class="page" data-nav="2 Prompt">
+      <div id="p2left">
+        <p class="kicker">Schritt 2 · Prompt schreiben</p>
+        <h1>Tippen, Dateien hineinziehen, Enter</h1>
+        <p class="lead">Wird eine Datei ins Terminal gezogen, fügt das Terminal ihren Pfad ein. Mehr Technik braucht es nicht.</p>
+        <ul class="points">
+          <li>Gelber Platzhalter = hier die Datei mit dieser Nummer aus dem Demo-Ordner hineinziehen.</li>
+          <li>Hier im Browser: Kärtchen aufs Terminal ziehen <b>oder</b> „Nächste Datei“ klicken.</li>
+        </ul>
+        <div class="controls">
+          <button class="btn" id="dropNext" type="button">📎 Nächste Datei</button>
+          <button class="btn ghost" id="dropReset" type="button">↺ Zurücksetzen</button>
+        </div>
+      </div>
+      <div class="term" id="term1"><div class="bar"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i>&nbsp; Terminal — claude</div><div class="body" id="prompt1"></div></div>
+    </section>
+
+    <!-- 3 KI arbeitet -->
+    <section class="page" data-nav="3 KI arbeitet">
+      <div>
+        <p class="kicker">Schritt 3 · Die KI arbeitet</p>
+        <h1>Lesen, planen, bauen – mit Zwischenmeldungen</h1>
+        <p class="lead">Die KI liest zuerst alles, gleicht es mit der Vorlage ab und meldet, wo sie etwas entscheiden musste.</p>
+        <ul class="points">
+          <li>15 Quiz-Screenshots → 8 Plickers-Fragen</li>
+          <li>Handreichung → 59 Vokabelkarten mit Aussprache + Lösungen zum Aufdecken</li>
+          <li>Selbstcheck als Apps Script (.gs) für Google Forms</li>
+        </ul>
+        <div class="controls"><button class="btn" id="play3" type="button">▶ Ablauf abspielen</button></div>
+      </div>
+      <div class="term"><div class="bar"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i>&nbsp; Terminal — claude</div><div class="body" id="log3"></div></div>
+    </section>
+
+    <!-- 4 Prüfen -->
+    <section class="page" data-nav="4 Prüfen">
+      <div>
+        <p class="kicker">Schritt 4 · Ergebnis prüfen</p>
+        <h1>Die Lehrperson bleibt die Fachinstanz</h1>
+        <p class="lead">Die KI legt offen, wo sie unsicher war. Genau diese Stellen prüft man – nicht alles von vorn.</p>
+        <ul class="check" id="checks">
+          <li><span><b>Dateinamen vertauscht?</b> Die KI bemerkte, dass die beiden Handreichungs-PDFs falsch benannt waren, und ordnete nach Inhalt.</span></li>
+          <li><span><b>Quiz ohne Lösung:</b> „sub-headings“ beim Skimming richtig? Die KI belegte es mit dem Workbook.</span></li>
+          <li><span><b>Widerspruch zwischen Buch und Handreichung</b> (1498 oder 1600?): die KI folgte der Handreichung und begründete es.</span></li>
+          <li><span><b>Eigene Ergänzungen</b> (Beispielmeinungen ohne Lösung im Lehrerband) sind als „Example“ gekennzeichnet.</span></li>
+          <li><span><b>Kurz durchklicken:</b> Layout am Beamer, Ton der Vokabelkarten, Plickers-Folien.</span></li>
+        </ul>
+      </div>
+      <div class="cards">
+        <div class="card"><p class="tag">Webseite</p><h3>Words &amp; Tasks</h3><p>18 Seiten: Vokabelkarten mit Ton, Lösungen zum Aufdecken, Self-Check, Timeline-Teil. Eine Datei, läuft offline.</p></div>
+        <div class="card"><p class="tag">Plickers</p><h3>8 Folien + Text</h3><p>Fragen als 16:9-Bilder, Antworten zum Einfügen, Lösungsschlüssel als PDF.</p></div>
+        <div class="card"><p class="tag">Google Forms</p><h3>Self-Check (.gs)</h3><p>Erzeugt das Quiz-Formular mit Punkten und Feedback zu jeder Frage.</p></div>
+        <div class="card"><p class="tag">Quellen</p><h3>Bausteine zum Ändern</h3><p>Wörter, Texte und Skript liegen getrennt – Änderungswünsche einfach als Prompt formulieren.</p></div>
+      </div>
+    </section>
+
+    <!-- 5 Veröffentlichen -->
+    <section class="page" data-nav="5 Online">
+      <div>
+        <p class="kicker">Schritt 5 · Veröffentlichen</p>
+        <h1>Ein Satz – und die Seite ist online</h1>
+        <p class="lead">Die KI legt die Datei im Kurs-Repository auf GitHub ab, ergänzt die Kursübersicht und lädt alles hoch. GitHub Pages macht daraus einen festen Link.</p>
+        <ul class="points">
+          <li>Kostenloses GitHub-Konto, einmalig eingerichtet</li>
+          <li>Jede Änderung ist versioniert und rückgängig zu machen</li>
+          <li>Öffentlich: keine Schülerdaten, keine Schulbuchseiten hochladen</li>
+        </ul>
+        <div class="controls">
+          <a class="btn" href="https://nitrogen-ai.github.io/English/SEK-I/year9/Unit-2-India-land-of-contrasts/04-Newspaper-article/index.html" target="_blank" rel="noopener">🔗 Ergebnis öffnen</a>
+          <a class="btn ghost" href="https://nitrogen-ai.github.io/English/SEK-I/year9/year9-kursuebersicht.html" target="_blank" rel="noopener">Kursübersicht</a>
+        </div>
+      </div>
+      <div class="term"><div class="bar"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i>&nbsp; Terminal — claude</div><div class="body" id="log5"></div></div>
+    </section>
+
+    <!-- 6 Self-Check -->
+    <section class="page" data-nav="6 Self-Check">
+      <div>
+        <p class="kicker">Schritt 6 · Self-Check verknüpfen</p>
+        <h1>Google-Formular in zwei Minuten</h1>
+        <div class="mini">
+          <div><a href="https://script.google.com" target="_blank" rel="noopener">script.google.com</a> → Neues Projekt → Inhalt der <b>.gs</b>-Datei einfügen</div>
+          <div>Funktion <code>createSelfCheck</code> ausführen, Berechtigungen erlauben</div>
+          <div>Im Formular: Noten <b>sofort freigeben</b>, richtige Antworten sichtbar machen</div>
+          <div>„Senden“ → Link kopieren (forms.gle/…) und der KI geben</div>
+        </div>
+      </div>
+      <div class="term"><div class="bar"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i>&nbsp; Terminal — claude</div><div class="body" id="log6"></div></div>
+    </section>
+
+    <!-- 7 Klasse -->
+    <section class="page" data-nav="7 Klasse">
+      <div>
+        <p class="kicker">Schritt 7 · Bereitstellen</p>
+        <h1>So kommt es bei den Schüler:innen an</h1>
+        <ul class="points">
+          <li><b>Beamer:</b> Seite projizieren, Vokabeln gemeinsam aufdecken und anhören, Lösungen Aufgabe für Aufgabe einblenden.</li>
+          <li><b>iPads:</b> QR-Code auf der Self-Check-Seite scannen, Quiz allein lösen, Feedback lesen.</li>
+          <li><b>Plenum:</b> Plickers-Set zur gemeinsamen Sicherung.</li>
+          <li><b>Zuhause:</b> Link aus der Kursübersicht oder Google Classroom zum Nacharbeiten.</li>
+        </ul>
+        <div class="hint ok"><b>Wiederverwenden:</b> Für die nächste Stunde einfach die neue Handreichung + diese Seite als Vorlage hineinziehen – Format und Stil bleiben gleich.</div>
+      </div>
+      <div class="big3">
+        <div><span class="n">✓</span><p><b>Datenschutz</b><small>Namenslisten nur im (nicht öffentlichen) Formular, nie im öffentlichen Repository.</small></p></div>
+        <div><span class="n">©</span><p><b>Urheberrecht</b><small>Schulbuch und Handreichung dienen der KI nur als Vorlage. Veröffentlicht werden nur eigene Texte und Aufgaben.</small></p></div>
+        <div><span class="n">👁</span><p><b>Verantwortung</b><small>Alles, was die Klasse sieht, hat die Lehrperson einmal gelesen.</small></p></div>
+      </div>
+    </section>
+
+  </main>
+  <footer>
+    <button id="prev" type="button">← Zurück</button>
+    <span id="pos"></span>
+    <button id="next" type="button">Weiter →</button>
+  </footer>
+</div>
+<script>
+const FILES = [
+  ["🌐", "1 Vorlage – Ahimsa Words and Tasks.html", "So soll das Ergebnis aussehen (frühere Stunde)"],
+  ["📄", "2 Vorlage-Handreichung – Ahimsa.pdf", "Woraus die Vorlage entstanden ist"],
+  ["📕", "3 Handreichung – Understanding a newspaper article", "Lösungen + Wortschatz, Teil 1"],
+  ["📕", "4 Handreichung – India timeline", "Lösungen + Wortschatz, Teil 2"],
+  ["📁", "9 Ergebnis", "Zielordner (anfangs leer)"],
+  ["🖼️", "5 Quiz-Screenshots", "15 Bilder des Digital-Quiz"],
+  ["📁", "6 Plickers-Vorbild", "ein früheres Plickers-Set als Muster"],
+  ["📖", "7 Schülerbuch S. 54–55", "Schüleransicht zum Abgleich"],
+  ["📖", "8 Schülerbuch S. 58–59", "Schüleransicht zum Abgleich"],
+];
+// The prompt: strings and file numbers (index into FILES)
+const PROMPT = ["Please make a .html lesson moderation and self-check material like ", 0, ", which was based on the suggestions ", 1, ". Now read these instructions ", 2, " ", 3, " and store everything at ", 4, ". Also generate the Plickers set from ", 5, " like you did with ", 6, ". Also generate the .gs that creates the form for the self-check, which should be linked after the first part of the lesson. The India timeline part doesn't need a Plickers set, it should just be a self-check lesson based on the solutions. I am attaching both reference materials to check with the students' view: ", 7, " ", 8];
+
+const pages = [...document.querySelectorAll(".page")];
+const stepsNav = document.getElementById("steps");
+const navBtns = pages.map((p, i) => {
+  const b = document.createElement("button");
+  b.type = "button"; b.textContent = p.dataset.nav; b.onclick = () => go(i);
+  stepsNav.appendChild(b); return b;
+});
+const esc = s => s.replace(/&/g, "&amp;").replace(/</g, "&lt;");
+
+/* Step 1: file list */
+const filesBox = document.getElementById("files");
+FILES.forEach(([ic, name, what], i) => {
+  const d = document.createElement("div");
+  d.className = "file"; d.draggable = true; d.dataset.i = i;
+  d.innerHTML = `<span class="ic">${ic}</span><span><b>${esc(name)}</b><span>${what}</span></span>`;
+  filesBox.appendChild(d);
+});
+
+/* Step 2: prompt with drop slots */
+const p1 = document.getElementById("prompt1");
+let filled = new Set();
+function renderPrompt() {
+  const nextSlot = PROMPT.find(x => typeof x === "number" && !filled.has(x));
+  p1.innerHTML = `<span class="pr">&gt;</span> ` + PROMPT.map(x => {
+    if (typeof x === "string") return esc(x);
+    if (filled.has(x)) return `<span class="chip">📎 ${esc(FILES[x][1])}</span>`;
+    return `<span class="slot${x === nextSlot ? " next" : ""}" data-i="${x}">[ ${FILES[x][1].split(" ")[0]} ]</span>`;
+  }).join("") + (nextSlot === undefined ? ` <span class="cursor"></span><br><br><span class="dim">↵ Enter – fertig! Die KI beginnt zu lesen.</span>` : "");
+  p1.querySelectorAll(".slot").forEach(s => s.onclick = () => fill(+s.dataset.i));
+  document.querySelectorAll(".file").forEach(f => f.classList.toggle("used", filled.has(+f.dataset.i)));
+}
+function fill(i) { filled.add(i); renderPrompt(); }
+document.getElementById("dropNext").onclick = () => {
+  const n = PROMPT.find(x => typeof x === "number" && !filled.has(x));
+  if (n !== undefined) fill(n);
+};
+document.getElementById("dropReset").onclick = () => { filled = new Set(); renderPrompt(); };
+renderPrompt();
+// Drag & drop of file cards (from step 1, also usable on step 2 via the visible list there)
+document.addEventListener("dragstart", e => { const f = e.target.closest?.(".file"); if (f) e.dataTransfer.setData("text/plain", f.dataset.i); });
+p1.addEventListener("dragover", e => { e.preventDefault(); p1.classList.add("drop"); });
+p1.addEventListener("dragleave", () => p1.classList.remove("drop"));
+p1.addEventListener("drop", e => {
+  e.preventDefault(); p1.classList.remove("drop");
+  const i = parseInt(e.dataTransfer.getData("text/plain"), 10);
+  if (!Number.isNaN(i)) fill(i);
+});
+const p2left = document.getElementById("p2left");
+
+/* Terminal logs */
+function runLog(el, lines, speed = 450) {
+  el.innerHTML = ""; let k = 0;
+  clearInterval(el._t);
+  el._t = setInterval(() => {
+    if (k >= lines.length) { clearInterval(el._t); return; }
+    const [cls, text] = lines[k++];
+    const div = document.createElement("div");
+    if (cls) div.className = cls;
+    div.innerHTML = text; el.appendChild(div); el.scrollTop = el.scrollHeight;
+  }, speed);
+}
+const LOG3 = [
+  ["dim", "● Lese 15 Quiz-Screenshots und die Vorlage …"],
+  ["dim", "● Lese die Handreichungen (S. 89–92, S. 97) …"],
+  ["warnline", "⚠ Die beiden PDFs sind vertauscht benannt – ich ordne nach Inhalt."],
+  ["dim", "● Prüfe im Workbook: „sub-headings“ gehören zum Skimming ✓"],
+  ["out", "✔ 27 + 32 Vokabelkarten mit Lautschrift, Lückensatz und Ton"],
+  ["out", "✔ Aufgaben 1a–2b, My task, Timeline a/b zum Aufdecken"],
+  ["out", "✔ Plickers: 8 Folien, Antworttext, Lösungs-PDF"],
+  ["out", "✔ Self-Check als Google-Apps-Script (18 Punkte, Feedback je Frage)"],
+  ["warnline", "Bitte prüfen: 1600 statt 1498 (Handreichung folgt der Timeline)."],
+  ["", "<span class='pr'>&gt;</span> <span class='cursor'></span>"],
+];
+const LOG5 = [
+  ["", "<span class='pr'>&gt;</span> Please commit and push, I would like to try it via the link directly in the browser."],
+  ["dim", "● Kopiere die Seite ins Kurs-Repository, ergänze die Kursübersicht …"],
+  ["dim", "$ git commit -m \"Year 9 Unit 2: Newspaper article + India timeline\""],
+  ["dim", "$ git push"],
+  ["out", "✔ GitHub Pages veröffentlicht (Status 200)"],
+  ["out", "🔗 nitrogen-ai.github.io/English/…/04-Newspaper-article/"],
+];
+const LOG6 = [
+  ["", "<span class='pr'>&gt;</span> Please integrate the quiz link for the self-check: https://forms.gle/…"],
+  ["dim", "● Trage den Link ein, erzeuge den QR-Code, baue die Seite neu …"],
+  ["out", "✔ Self-Check-Seite: Button „Start the self-check →“ + QR-Code"],
+  ["out", "✔ Commit + Push, live geprüft"],
+];
+document.getElementById("play3").onclick = () => runLog(document.getElementById("log3"), LOG3);
+
+/* Step 4: checklist */
+document.querySelectorAll("#checks li").forEach(li => li.onclick = () => li.classList.toggle("on"));
+
+/* Navigation */
+let idx = 0;
+const prev = document.getElementById("prev"), next = document.getElementById("next"), pos = document.getElementById("pos");
+function go(i) {
+  if (i < 0 || i >= pages.length) return;
+  idx = i;
+  pages.forEach((p, n) => p.classList.toggle("on", n === i));
+  navBtns.forEach((b, n) => { b.classList.toggle("on", n === i); b.classList.toggle("done", n < i); });
+  navBtns[i].scrollIntoView({ block: "nearest", inline: "center" });
+  document.getElementById("main").scrollTop = 0;
+  prev.disabled = i === 0; next.disabled = i === pages.length - 1;
+  pos.textContent = (i + 1) + " / " + pages.length;
+  if (i === 1) { pages[1].appendChild(filesBox); filesBox.classList.remove("compact"); }
+  if (i === 2) { p2left.appendChild(filesBox); filesBox.classList.add("compact"); }
+  if (i === 3 && !document.getElementById("log3").innerHTML) runLog(document.getElementById("log3"), LOG3);
+  if (i === 5) runLog(document.getElementById("log5"), LOG5, 600);
+  if (i === 6) runLog(document.getElementById("log6"), LOG6, 600);
+  try { history.replaceState(null, "", "#" + (i + 1)); } catch (e) {}
+}
+prev.onclick = () => go(idx - 1);
+next.onclick = () => go(idx + 1);
+document.addEventListener("keydown", e => {
+  if (e.key === "ArrowRight" || e.key === "PageDown") go(idx + 1);
+  if (e.key === "ArrowLeft" || e.key === "PageUp") go(idx - 1);
+});
+const h = parseInt(location.hash.slice(1), 10);
+go(h >= 1 && h <= pages.length ? h - 1 : 0);
+</script>
+</body>
+</html>
